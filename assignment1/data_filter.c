@@ -15,7 +15,7 @@ bool isValidDataAmount(char *str) {
     for (; str[i + 1] != '\0'; i++)
         if (!isdigit(str[i])) return false;
     for (; j < 4; j++)
-        if (str[i] == VALID_CHARS[j]) return true;
+        if (toupper(str[i]) == VALID_CHARS[j]) return true;
     return false;
 }
 
@@ -23,13 +23,13 @@ long long parseDataAmountIntoInteger(char *dataAmount){
     char *dataType;
     long long bytesNumber = strtol(dataAmount, &dataType, 10);
     int dataTypeSize = 0;
-    if (dataType[0] == 'G')
+    if (toupper(dataType[0]) == 'G')
         dataTypeSize = 1073741824;
-    if (dataType[0] == 'M')
+    if (toupper(dataType[0]) == 'M')
         dataTypeSize = 1048576;
-    if (dataType[0] == 'K')
+    if (toupper(dataType[0]) == 'K')
         dataTypeSize = 1024;
-    if (dataType[0] == 'B')
+    if (toupper(dataType[0]) == 'B')
         dataTypeSize = 1;
     return dataTypeSize * bytesNumber;
 }
@@ -56,7 +56,7 @@ bool filterFile(long long bytesNumber, char *inputFileName, char *outputFileName
         return false;
     }
     int outputFile;
-    if ((outputFile = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC)) < 0){
+    if ((outputFile = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0777)) < 0){
         close(inputFile);
         printf("Couldn't open file: %s\n", outputFileName);
         return false;
