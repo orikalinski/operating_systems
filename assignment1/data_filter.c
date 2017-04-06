@@ -11,9 +11,10 @@ const char VALID_CHARS[4] = {'G', 'M', 'K', 'B'};
 
 bool isValidDataAmount(char *str) {
     int i = 0;
+    int j = 0;
     for (; str[i + 1] != '\0'; i++)
         if (!isdigit(str[i])) return false;
-    for (int j = 0; j < 4; j++)
+    for (; j < 4; j++)
         if (str[i] == VALID_CHARS[j]) return true;
     return false;
 }
