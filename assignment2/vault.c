@@ -151,7 +151,7 @@ int init(char *vaultFilePath, ssize_t fileSize) {
     catalog1.gapArray[0] = mainGap;
     WRITE_CATALOG(vfd)
     lseek(vfd, fileSize - 1, SEEK_SET);
-    WRITE(vfd, "\n", sizeof(char))
+    WRITE(vfd, "\0", sizeof(char))
     close(vfd);
     printf("Result: A vault created\n");
     return 0;
@@ -202,7 +202,7 @@ int writeChunks(int fd1, int fd2, ssize_t sizeToWrite) {
     size_t bufferSize = sizeToWrite >= MEGABYTE ? LARGE_BUFFER_SIZE : SMALL_BUFFER_SIZE;
     char *buffer = (char *) malloc(bufferSize);
     while (currentBytes < sizeToWrite) {
-        bufferSize = sizeToWrite < bufferSize ? (size_t) sizeToWrite : bufferSize;
+        bufferSize = (sizeToWrite - currentBytes) < bufferSize ? (size_t) (sizeToWrite - currentBytes) : bufferSize;
         READ(fd2, buffer, bufferSize)
         WRITE(fd1, buffer, (size_t) readSize)
         currentBytes += readSize;
