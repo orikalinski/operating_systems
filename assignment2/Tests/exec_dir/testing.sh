@@ -15,18 +15,27 @@ containsElement () {
 addAndRemoveRandomFiles () {
     COUNTER=1
     num_of_files=$(ls -1q $FILES_DIRECTORY | wc -l)
-    random_indexes=$(shuf -i 1-$num_of_files -n 150)
-    for file in $FILES_DIRECTORY/*.txt
-    do
-        $EXEC $VAULT_FILE add $file >> /tmp/${EXEC##*/}.log  2>&1
-    done
-
+    random_indexes=$(shuf -i 1-$num_of_files -n 120)
     for file in $FILES_DIRECTORY/*.txt
     do
 	containsElement $COUNTER $random_indexes
 	if [ $? -eq 0 ]
 	then
-            $EXEC $VAULT_FILE rm ${file##*/} >> /tmp/${EXEC##*/}.log  2>&1
+            $EXEC $VAULT_FILE add $file >> /tmp/${EXEC##*/}.log  2>&1
+	fi
+	let COUNTER+=1
+    done
+
+    COUNTER=1
+    for file in $FILES_DIRECTORY/*.txt
+    do
+	if [ $[ $RANDOM % 2 ] -eq 0 ]
+	then
+	    containsElement $COUNTER $random_indexes
+	    if [ $? -eq 0 ]
+	    then
+                $EXEC $VAULT_FILE rm ${file##*/} >> /tmp/${EXEC##*/}.log  2>&1
+	    fi
 	fi
 	let COUNTER+=1
     done

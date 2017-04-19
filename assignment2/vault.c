@@ -119,9 +119,10 @@ ssize_t parseDataAmountIntoInteger(char *dataAmount) {
 
 ssize_t getFreeSpace(Catalog catalog1) {
     ssize_t freeSpace = catalog1.repoMD.fileSize - sizeof(Catalog);
-    int i = 0;
+    int i = 0, j;
     for (; i < catalog1.repoMD.numberOfFiles; i++)
-        freeSpace -= catalog1.FATArray[i].fileSize;
+        for (j = 0; j < catalog1.FATArray[i].numberOfFragments; j++)
+            freeSpace -= catalog1.FATArray[i].fragments[j].size;
     return freeSpace;
 }
 
@@ -165,12 +166,23 @@ int list(char *vaultFilePath) {
     for (; i < catalog1.repoMD.numberOfFiles; i++) {
         FAT currentFAT = catalog1.FATArray[i];
         char *printableInsertionTime = convertToPrintableDate(currentFAT.insertionDate);
-        printf("%s %zu %3o %s\n", currentFAT.fileName, currentFAT.fileSize,
+        printf("%s %zu 0%3o %s\n", currentFAT.fileName, currentFAT.fileSize,
                currentFAT.fileProtection, printableInsertionTime);
         free(printableInsertionTime);
     }
     close(vfd);
     return 0;
+}
+
+void findGap(Catalog catalog1, int *gapsIndexes, ssize_t *maximum, int *maximumIndex){
+    int j = 0;
+    for (; j < catalog1.repoMD.numberOfGaps - 1; j++) {
+        if (catalog1.gapArray[j].size > PREFIX_AND_SUFFIX_LENGTH && j != gapsIndexes[0] &&
+            j != gapsIndexes[1] && catalog1.gapArray[j].size > *maximum) {
+            *maximum = catalog1.gapArray[j].size;
+            *maximumIndex = j;
+        }
+    }
 }
 
 int findRelevantGaps(Catalog catalog1, ssize_t fileToInsertSize, int *gapsIndexes) {
@@ -180,20 +192,24 @@ int findRelevantGaps(Catalog catalog1, ssize_t fileToInsertSize, int *gapsIndexe
     int j;
     ssize_t leftToPlace = fileToInsertSize;
     for (; i < NUM_OF_FRAGMENTS; i++) {
-        if (!i || gapsIndexes[i - 1] != -1) leftToPlace += PREFIX_AND_SUFFIX_LENGTH;
+        leftToPlace += PREFIX_AND_SUFFIX_LENGTH;
         maximum = 0;
         maximumIndex = -1;
-        for (j = 0; j < catalog1.repoMD.numberOfGaps; j++) {
-            if (i != 2 && j == catalog1.repoMD.numberOfGaps - 1) continue;
-            if (j != gapsIndexes[0] && j != gapsIndexes[1] && catalog1.gapArray[j].size > maximum) {
-                maximum = catalog1.gapArray[j].size;
-                maximumIndex = j;
+        findGap(catalog1, gapsIndexes, &maximum, &maximumIndex);
+        if (i == NUM_OF_FRAGMENTS - 1){
+            if (maximum < leftToPlace &&
+                    catalog1.gapArray[catalog1.repoMD.numberOfGaps - 1].size >= leftToPlace) {
+                maximum = catalog1.gapArray[catalog1.repoMD.numberOfGaps - 1].size;
+                maximumIndex = catalog1.repoMD.numberOfGaps - 1;
             }
         }
+
         gapsIndexes[i] = maximumIndex;
         if (maximum >= leftToPlace) return 0;
+        if (!maximum) leftToPlace -= PREFIX_AND_SUFFIX_LENGTH;
         leftToPlace -= maximum;
     }
+
     return 1;
 }
 
@@ -211,42 +227,44 @@ int writeChunks(int fd1, int fd2, ssize_t sizeToWrite) {
     return 0;
 }
 
-int writeIntoGap(int vfd, int ifd, Catalog *catalog1, FAT currentFAT, int currentFATIndex,
+int writeIntoGap(int vfd, int ifd, Catalog *catalog1, FAT *currentFAT, int currentFATIndex,
                  int currentFragmentIndex, int gapIndex) {
-    ssize_t totalSize = currentFAT.fileSize;
+    ssize_t totalSize = currentFAT->fileSize;
     ssize_t leftToPlace = totalSize;
     int i = 0;
-    for (; i < currentFragmentIndex; i++) {
-        leftToPlace -= (currentFAT.fragments[i].size);
-    }
+    for (; i < currentFragmentIndex; i++)
+        leftToPlace -= (currentFAT->fragments[i].size - PREFIX_AND_SUFFIX_LENGTH);
     Block currentGap = catalog1->gapArray[gapIndex];
-    ssize_t toWrite = currentGap.size < leftToPlace ? currentGap.size : leftToPlace;
+    ssize_t toWrite = (currentGap.size - PREFIX_AND_SUFFIX_LENGTH) < leftToPlace
+                      ? (currentGap.size - PREFIX_AND_SUFFIX_LENGTH) : leftToPlace;
     lseek(vfd, currentGap.offset, SEEK_SET);
-    lseek(ifd, currentFAT.fileSize - leftToPlace, SEEK_SET);
+    lseek(ifd, currentFAT->fileSize - leftToPlace, SEEK_SET);
     WRITE(vfd, PREFIX_DELIMITER, PREFIX_LENGTH)
     writeChunks(vfd, ifd, toWrite);
     WRITE(vfd, SUFFIX_DELIMITER, SUFFIX_LENGTH)
-    ssize_t fragmentSize = leftToPlace + PREFIX_AND_SUFFIX_LENGTH;
-    currentFAT.fragments[currentFragmentIndex].size = fragmentSize;
-    currentFAT.fragments[currentFragmentIndex].offset = currentGap.offset;
-    currentFAT.numberOfFragments += 1;
+    ssize_t fragmentSize = toWrite + PREFIX_AND_SUFFIX_LENGTH;
+    currentFAT->fragments[currentFragmentIndex].size = fragmentSize;
+    currentFAT->fragments[currentFragmentIndex].offset = currentGap.offset;
+    currentFAT->numberOfFragments += 1;
     currentGap.size -= fragmentSize;
     currentGap.offset += fragmentSize;
-    catalog1->FATArray[currentFATIndex] = currentFAT;
+    catalog1->FATArray[currentFATIndex] = *currentFAT;
     catalog1->gapArray[gapIndex] = currentGap;
     return 0;
 }
 
 void cleanGaps(Catalog *catalog1) {
-    short i = 0, j = 0;
-    for (; i < catalog1->repoMD.numberOfGaps; i++) {
-        if (catalog1->gapArray[j].size <= 0) {
-            if (j < catalog1->repoMD.numberOfGaps - 1)
+    int i = 0, j = 0, n = 0;
+    short k = 0;
+    for (; i < catalog1->repoMD.numberOfGaps - k; i++) {
+        if (catalog1->gapArray[n].size <= 0){
+            for (j = n; j < catalog1->repoMD.numberOfGaps - 1 - k; j++)
                 catalog1->gapArray[j] = catalog1->gapArray[j + 1];
-        } else
-            j++;
+            k++;
+        }
+        else n++;
     }
-    catalog1->repoMD.numberOfGaps = j;
+    catalog1->repoMD.numberOfGaps-=k;
 }
 
 void unionGaps(Catalog *catalog1) {
@@ -269,7 +287,7 @@ void insertGap(Catalog *catalog1, Block gap) {
     int i = 0, j;
     for (; i < catalog1->repoMD.numberOfGaps; i++)
         if (catalog1->gapArray[i].offset > gap.offset) break;
-    for (j = i; j < catalog1->repoMD.numberOfGaps; j++)
+    for (j = catalog1->repoMD.numberOfGaps - 1; j >= i ; j--)
         catalog1->gapArray[j + 1] = catalog1->gapArray[j];
     catalog1->gapArray[i] = gap;
     catalog1->repoMD.numberOfGaps++;
@@ -281,6 +299,8 @@ void removeFragments(FAT *currentFAT, int fragmentIndex){
         if (i == fragmentIndex) break;
     for (; i < currentFAT->numberOfFragments - 1; i++)
         currentFAT->fragments[i] = currentFAT->fragments[i + 1];
+    currentFAT->fragments[i].size = 0;
+    currentFAT->fragments[i].offset = 0;
     currentFAT->numberOfFragments -= 1;
 }
 
@@ -318,6 +338,11 @@ int insert(char *vaultFilePath, char *toInsertFilePath) {
     int vfd, ifd;
     OPEN(vfd, vaultFilePath, O_RDWR, VAULT_FILE_PERMISSIONS)
     READ_CATALOG(vfd, vaultFilePath);
+    if (catalog1.repoMD.numberOfFiles >= 100){
+        printf("There are already %d files\n", NUM_OF_FILES);
+        close(vfd);
+        return 1;
+    }
     char *fileName = basename(toInsertFilePath);
     VALIDATE_NAME(catalog1, fileName, true)
     struct stat *stat1 = (struct stat *) malloc(sizeof(struct stat));
@@ -355,7 +380,7 @@ int insert(char *vaultFilePath, char *toInsertFilePath) {
     int j = 0;
     for (i = 0; i < NUM_OF_FRAGMENTS; i++) {
         if (gapsIndexes[i] != -1) {
-            writeIntoGap(vfd, ifd, &catalog1, currentFAT, currentFATIndex, j, gapsIndexes[i]);
+            writeIntoGap(vfd, ifd, &catalog1, &currentFAT, currentFATIndex, j, gapsIndexes[i]);
             j++;
         }
     }
@@ -412,6 +437,7 @@ int fetch(char *vaultFilePath, char *fileName) {
     int FATIndex = fileNameExists(catalog1, fileName);
     FAT FAT1 = catalog1.FATArray[FATIndex];
     writeFileIntoCurrentDirectory(vfd, FAT1);
+    printf("Result: %s created\n", fileName);
     return 0;
 }
 
@@ -431,10 +457,15 @@ int indentFragmentKSteps(int vfd1, int vfd2, Block *fragment, ssize_t k){
     lseek(vfd1, fragment->offset - k, SEEK_SET);
     lseek(vfd2, fragment->offset, SEEK_SET);
     writeChunks(vfd1, vfd2, fragment->size);
-    lseek(vfd1, fragment->offset, SEEK_SET);
-    WRITE(vfd1, DELETION_MARKER, PREFIX_LENGTH)
-    lseek(vfd1, fragment->offset + fragment->size - SUFFIX_LENGTH, SEEK_SET);
+    size_t suffixLength = k < SUFFIX_LENGTH ? (size_t)k : SUFFIX_LENGTH;
+    lseek(vfd1, fragment->offset + fragment->size - suffixLength, SEEK_SET);
     WRITE(vfd1, DELETION_MARKER, SUFFIX_LENGTH)
+    size_t prefixLength = fragment->size - (size_t)k;
+    prefixLength = prefixLength > 0 ? prefixLength : PREFIX_LENGTH;
+    prefixLength = prefixLength >= PREFIX_LENGTH ? 0 : prefixLength;
+    lseek(vfd1, fragment->offset, SEEK_SET);
+    WRITE(vfd1, DELETION_MARKER, prefixLength)
+
     fragment->offset -= k;
     return 0;
 }
