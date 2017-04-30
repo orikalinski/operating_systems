@@ -31,20 +31,20 @@
 #define OPEN(fd, filePath, oFlags, permissions) \
     if ((fd = open(filePath, oFlags, permissions)) == -1){ \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
-        return 1; \
+        return errno; \
     }
 #define WRITE(fd, buffer, size) \
     if ((write(fd, buffer, size)) == -1){ \
         printf("Something went wrong with write()! %s\n", strerror(errno)); \
         close(fd); \
-        return 1; \
+        return errno; \
     }
 #define READ(fd, buffer, size) \
     size_t readSize; \
     if ((readSize = read(fd, buffer, size)) == -1){ \
         printf("Something went wrong with read()! %s\n", strerror(errno)); \
         close(fd); \
-        return 1; \
+        return errno; \
     }
 #define READ_CATALOG(fd, vaultFilePath) \
     Catalog catalog1; \
@@ -95,7 +95,11 @@ time_t getCurrentTime() {
 }
 
 char *convertToPrintableDate(time_t time1) {
-    char *timeStr = (char *) malloc(TIME_SIZE);
+    char *timeStr;
+    if ((timeStr = (char *) malloc(TIME_SIZE)) == NULL) {
+        printf("Couldn't allocate memory for the timeStr");
+        return NULL;
+    }
     struct tm *timeInfo;
     timeInfo = localtime(&time1);
     strftime(timeStr, TIME_SIZE, "%c", timeInfo);
@@ -163,10 +167,12 @@ int list(char *vaultFilePath) {
     OPEN(vfd, vaultFilePath, O_RDONLY, VAULT_FILE_PERMISSIONS)
     READ_CATALOG(vfd, vaultFilePath)
     int i = 0;
+    char *printableInsertionTime;
     for (; i < catalog1.repoMD.numberOfFiles; i++) {
         FAT currentFAT = catalog1.FATArray[i];
-        char *printableInsertionTime = convertToPrintableDate(currentFAT.insertionDate);
-        printf("%s %zu 0%3o %s\n", currentFAT.fileName, currentFAT.fileSize,
+        if ((printableInsertionTime = convertToPrintableDate(currentFAT.insertionDate)) == NULL)
+	        return 1;
+        printf("%s %zuB 0%3o %s\n", currentFAT.fileName, currentFAT.fileSize,
                currentFAT.fileProtection, printableInsertionTime);
         free(printableInsertionTime);
     }
@@ -189,7 +195,6 @@ int findRelevantGaps(Catalog catalog1, ssize_t fileToInsertSize, int *gapsIndexe
     ssize_t maximum;
     int maximumIndex;
     int i = 0;
-    int j;
     ssize_t leftToPlace = fileToInsertSize;
     for (; i < NUM_OF_FRAGMENTS; i++) {
         leftToPlace += PREFIX_AND_SUFFIX_LENGTH;
@@ -215,8 +220,12 @@ int findRelevantGaps(Catalog catalog1, ssize_t fileToInsertSize, int *gapsIndexe
 
 int writeChunks(int fd1, int fd2, ssize_t sizeToWrite) {
     ssize_t currentBytes = 0;
+    char *buffer;
     size_t bufferSize = sizeToWrite >= MEGABYTE ? LARGE_BUFFER_SIZE : SMALL_BUFFER_SIZE;
-    char *buffer = (char *) malloc(bufferSize);
+    if ((buffer = (char *) malloc(bufferSize)) == NULL){
+        printf("Couldn't allocate memory for the buffer");
+        return 1;
+    }
     while (currentBytes < sizeToWrite) {
         bufferSize = (sizeToWrite - currentBytes) < bufferSize ? (size_t) (sizeToWrite - currentBytes) : bufferSize;
         READ(fd2, buffer, bufferSize)
@@ -240,7 +249,7 @@ int writeIntoGap(int vfd, int ifd, Catalog *catalog1, FAT *currentFAT, int curre
     lseek(vfd, currentGap.offset, SEEK_SET);
     lseek(ifd, currentFAT->fileSize - leftToPlace, SEEK_SET);
     WRITE(vfd, PREFIX_DELIMITER, PREFIX_LENGTH)
-    writeChunks(vfd, ifd, toWrite);
+    if (writeChunks(vfd, ifd, toWrite) == 1) return 1;
     WRITE(vfd, SUFFIX_DELIMITER, SUFFIX_LENGTH)
     ssize_t fragmentSize = toWrite + PREFIX_AND_SUFFIX_LENGTH;
     currentFAT->fragments[currentFragmentIndex].size = fragmentSize;
@@ -345,7 +354,12 @@ int insert(char *vaultFilePath, char *toInsertFilePath) {
     }
     char *fileName = basename(toInsertFilePath);
     VALIDATE_NAME(catalog1, fileName, true)
-    struct stat *stat1 = (struct stat *) malloc(sizeof(struct stat));
+    struct stat *stat1;
+    if ((stat1 = (struct stat *) malloc(sizeof(struct stat))) == NULL) {
+        close(vfd);
+        printf("Couldn't allocate memory for the stats");
+        return 1;
+    }
     if (getStats(toInsertFilePath, stat1) == 1) {
         free(stat1);
         close(vfd);
@@ -380,12 +394,14 @@ int insert(char *vaultFilePath, char *toInsertFilePath) {
     int j = 0;
     for (i = 0; i < NUM_OF_FRAGMENTS; i++) {
         if (gapsIndexes[i] != -1) {
-            writeIntoGap(vfd, ifd, &catalog1, &currentFAT, currentFATIndex, j, gapsIndexes[i]);
+            if (writeIntoGap(vfd, ifd, &catalog1, &currentFAT, currentFATIndex, j, gapsIndexes[i]) == 1) 
+		return 1;
             j++;
         }
     }
     cleanGaps(&catalog1);
     catalog1.repoMD.numberOfFiles++;
+    catalog1.repoMD.lastModified = getCurrentTime();
     WRITE_CATALOG(vfd)
     close(vfd);
     close(ifd);
@@ -413,6 +429,7 @@ int delete(char *vaultFilePath, char *fileName) {
     VALIDATE_NAME(catalog1, fileName, false)
     int FATIndex = fileNameExists(catalog1, fileName);
     deleteFAT(vfd, &catalog1, FATIndex);
+    catalog1.repoMD.lastModified = getCurrentTime();
     WRITE_CATALOG(vfd)
     close(vfd);
     printf("Result: %s deleted\n", fileName);
@@ -424,7 +441,7 @@ int writeFileIntoCurrentDirectory(int vfd, FAT FAT1) {
     int i = 0;
     for (; i < FAT1.numberOfFragments; i++) {
         lseek(vfd, FAT1.fragments[i].offset + PREFIX_LENGTH, SEEK_SET);
-        writeChunks(fd, vfd, FAT1.fragments[i].size - PREFIX_AND_SUFFIX_LENGTH);
+        if (writeChunks(fd, vfd, FAT1.fragments[i].size - PREFIX_AND_SUFFIX_LENGTH) == 1) return 1;
     }
     return 0;
 }
@@ -436,7 +453,7 @@ int fetch(char *vaultFilePath, char *fileName) {
     VALIDATE_NAME(catalog1, fileName, false)
     int FATIndex = fileNameExists(catalog1, fileName);
     FAT FAT1 = catalog1.FATArray[FATIndex];
-    writeFileIntoCurrentDirectory(vfd, FAT1);
+    if (writeFileIntoCurrentDirectory(vfd, FAT1) == 1) return 1;
     printf("Result: %s created\n", fileName);
     return 0;
 }
@@ -456,7 +473,7 @@ void sortFragmentsByOffset(Block **fragments, int numOfFragments){
 int indentFragmentKSteps(int vfd1, int vfd2, Block *fragment, ssize_t k){
     lseek(vfd1, fragment->offset - k, SEEK_SET);
     lseek(vfd2, fragment->offset, SEEK_SET);
-    writeChunks(vfd1, vfd2, fragment->size);
+    if (writeChunks(vfd1, vfd2, fragment->size) == 1) return 1;
     size_t suffixLength = k < SUFFIX_LENGTH ? (size_t)k : SUFFIX_LENGTH;
     lseek(vfd1, fragment->offset + fragment->size - suffixLength, SEEK_SET);
     WRITE(vfd1, DELETION_MARKER, SUFFIX_LENGTH)
@@ -470,7 +487,7 @@ int indentFragmentKSteps(int vfd1, int vfd2, Block *fragment, ssize_t k){
     return 0;
 }
 
-void handleFragmentsBetweenTwoGaps(int vfd1, int vfd2, Block gap1, Block gap2, Block **sortedFragments, int numberOfFragments) {
+int handleFragmentsBetweenTwoGaps(int vfd1, int vfd2, Block gap1, Block gap2, Block **sortedFragments, int numberOfFragments) {
     int i = 0;
     Block *currentFragment;
     for (; i < numberOfFragments; i++) {
@@ -480,8 +497,9 @@ void handleFragmentsBetweenTwoGaps(int vfd1, int vfd2, Block gap1, Block gap2, B
     for (; i < numberOfFragments; i++) {
         currentFragment = sortedFragments[i];
         if (currentFragment->offset > gap2.offset) break;
-        indentFragmentKSteps(vfd1, vfd2, currentFragment, gap1.size);
+        if (indentFragmentKSteps(vfd1, vfd2, currentFragment, gap1.size) == 1) return 1;
     }
+    return 0;
 }
 
 int defrag(char *vaultFilePath) {
@@ -509,6 +527,7 @@ int defrag(char *vaultFilePath) {
         catalog1.gapArray[0] = currentGap;
         unionGaps(&catalog1);
     }
+    catalog1.repoMD.lastModified = getCurrentTime();
     WRITE_CATALOG(vfd1)
     close(vfd1);
     close(vfd2);
