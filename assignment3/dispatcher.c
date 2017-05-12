@@ -11,6 +11,8 @@
 #include <wait.h>
 
 #define MAX_SIZE 1024
+#define SMALL_M_SIZE 1024
+#define SINGLE_PROCESS 1
 #define CEIL(x, y) 1 + ((x - 1) / y);
 
 static long counter = 0;
@@ -49,6 +51,7 @@ int main(int argc, char *argv[]) {
     }
     ssize_t fileSize = stat1->st_size;
     long sqrtSize = (long)sqrt(stat1->st_size);
+    sqrtSize = sqrtSize < SMALL_M_SIZE ? SINGLE_PROCESS : sqrtSize;
 
     struct sigaction new_action;
     memset(&new_action, 0, sizeof(new_action));
@@ -70,8 +73,8 @@ int main(int argc, char *argv[]) {
             sprintf(lengthStr, "%ld", length * (i + 1) > fileSize ? fileSize - length * i : length);
             sprintf(offsetStr, "%ld", length * i);
             printf("length: %s, offset: %s\n", lengthStr, offsetStr);
-            execv("/home/ori/computer_science/operating_systems/assignment3/counter",
-                  (char *[]) {"/home/ori/computer_science/operating_systems/assignment3/counter", argv[1], argv[2], offsetStr, lengthStr});
+            execv("./counter",
+                  (char *[]) {"./counter", argv[1], argv[2], offsetStr, lengthStr});
             return 0;
         }
         else if (j > 0);
@@ -79,6 +82,6 @@ int main(int argc, char *argv[]) {
             printf("fork failed\n");
     }
     while (wait(NULL) > 0);
-
+    printf("The character: %s, was written: %ld times in the text file: %s\n", argv[1], counter, argv[2]);
     return 0;
 }

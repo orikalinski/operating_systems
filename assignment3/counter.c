@@ -12,17 +12,13 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
-#include <errno.h>
-#include <string.h>
 #include <stdarg.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 
 #define MAX_SIZE 1024
+#define PAGE_SIZE 4096
+#define CEIL(x, y) (1 + ((x - 1) / y))
 
 int main(int argc, char *argv[]) {
     if (argc != 5) {
@@ -35,15 +31,18 @@ int main(int argc, char *argv[]) {
     size_t offset, length;
     sscanf(argv[3], "%zu", &offset);
     sscanf(argv[4], "%zu", &length);
+    size_t sizeofPagesLength = CEIL(length, PAGE_SIZE) * PAGE_SIZE;
+    size_t sizeofPagesOffset = (size_t) (offset / (double)PAGE_SIZE);
+    size_t offsetM = (size_t) (offset % PAGE_SIZE);
     int fd = open(textFileToProcess, O_RDONLY);
-    const char *mapped = mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0);
+    const char *mapped = (const char *)mmap(NULL, sizeofPagesLength, PROT_READ, MAP_SHARED, fd, sizeofPagesOffset);
     if (mapped == MAP_FAILED) {
         printf("mmap %s failed: %s\n", textFileToProcess, strerror (errno));
         return 1;
     }
-    int i = 0;
-    long count;
-    for (; i < length; i++) {
+    int i = offsetM;
+    long count = 0;
+    for (; i < offsetM + length; i++) {
         if (charToCount[0] == mapped[i])
             count += 1;
     }
@@ -57,6 +56,7 @@ int main(int argc, char *argv[]) {
     fd = open(fileName, O_WRONLY);
     char countStr[MAX_SIZE];
     sprintf(countStr, "%ld", count);
+    printf("count: %ld\n", count);
     write(fd, countStr, sizeof(countStr));
     sleep(1);
     close(fd);
