@@ -14,6 +14,11 @@
 #define SMALL_M_SIZE 1024
 #define SINGLE_PROCESS 1
 #define CEIL(x, y) 1 + ((x - 1) / y);
+#define READ_STAT(stat1) \
+    if (stat(textFileToProcess, stat1) < 0) { \
+        printf("Something went wrong with stat()! %s\n", strerror(errno)); \
+        return errno; \
+    }
 
 static long counter = 0;
 
@@ -21,13 +26,13 @@ void my_signal_handler(int signum,
                        siginfo_t *info,
                        void *ptr) {
     unsigned long pid = (unsigned long) info->si_pid;
-    printf("Signal sent from process %lu\n", pid);
+    kill((pid_t)pid, SIGUSR2);
     char fileName[MAX_SIZE];
     sprintf(fileName, "/tmp/counter_%lu", pid);
     int fd = open(fileName, O_RDONLY);
     char buffer[MAX_SIZE];
     read(fd, buffer, MAX_SIZE);
-    long count;
+    long count = 0;
     sscanf(buffer, "%ld", &count);
     counter += count;
     close(fd);
@@ -39,19 +44,6 @@ int main(int argc, char *argv[]) {
         printf("Wrong execution format, please pass the character to count and the text file to process");
         return 1;
     }
-    char *textFileToProcess = argv[2];
-    struct stat *stat1;
-    if ((stat1 = (struct stat *) malloc(sizeof(struct stat))) == NULL) {
-        printf("Couldn't allocate memory for the stats");
-        return 1;
-    }
-    if (stat(textFileToProcess, stat1) < 0) {
-        printf("Something went wrong with stat()! %s\n", strerror(errno));
-        return errno;
-    }
-    ssize_t fileSize = stat1->st_size;
-    long sqrtSize = (long)sqrt(stat1->st_size);
-    sqrtSize = sqrtSize < SMALL_M_SIZE ? SINGLE_PROCESS : sqrtSize;
 
     struct sigaction new_action;
     memset(&new_action, 0, sizeof(new_action));
@@ -62,26 +54,41 @@ int main(int argc, char *argv[]) {
         printf("Signal handle registration failed. %s\n", strerror(errno));
         return 1;
     }
+
+    char *textFileToProcess = argv[2];
+    struct stat *stat1;
+    if ((stat1 = (struct stat *) malloc(sizeof(struct stat))) == NULL) {
+        printf("Couldn't allocate memory for the stats");
+        return 1;
+    }
+    READ_STAT(stat1)
+    ssize_t fileSize = stat1->st_size;
+    long sqrtSize = (long)sqrt(stat1->st_size);
+    sqrtSize = sqrtSize < SMALL_M_SIZE ? SINGLE_PROCESS : sqrtSize;
+
     int i;
     long length = CEIL(fileSize, sqrtSize);
     char lengthStr[MAX_SIZE];
     char offsetStr[MAX_SIZE];
     for (i = 0; i < sqrtSize; i++){
         pid_t j = fork();
-        printf("pid: %ld\n", (long) j);
         if (j == 0) {
             sprintf(lengthStr, "%ld", length * (i + 1) > fileSize ? fileSize - length * i : length);
             sprintf(offsetStr, "%ld", length * i);
-            printf("length: %s, offset: %s\n", lengthStr, offsetStr);
             execv("./counter",
-                  (char *[]) {"./counter", argv[1], argv[2], offsetStr, lengthStr});
+                  (char *[]) {"./counter", argv[1], argv[2], offsetStr, lengthStr, NULL});
+            perror("execv");
             return 0;
         }
         else if (j > 0);
         else
             printf("fork failed\n");
     }
-    while (wait(NULL) > 0);
+    while (waitpid(-1, NULL, 0)) {
+        if (errno == ECHILD) {
+            break;
+        }
+    }
     printf("The character: %s, was written: %ld times in the text file: %s\n", argv[1], counter, argv[2]);
     return 0;
 }
