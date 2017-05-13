@@ -17,6 +17,8 @@
 #include <ctype.h>
 
 #define MAX_SIZE 1024
+#define FIFO_PERM 0666
+#define WAIT_TIME 1
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 #define CEIL(x, y) (1 + ((x - 1) / y))
 #define UNLINK(fileName) \
@@ -24,16 +26,44 @@
         printf("Something went wrong with unlink()! %s\n", strerror(errno)); \
         return errno; \
     }
-#define OPEN_MMAP(mapped) \
-    mapped = (const char *)mmap(NULL, sizeofPagesLength, PROT_READ, MAP_SHARED, fd, sizeofPagesOffset); \
+#define OPEN_MMAP(mapped, size, fd, offset) \
+    mapped = (const char *)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, offset); \
     if (mapped == MAP_FAILED) { \
-        printf("open mmap failed: %s\n", strerror(errno)); \
-        return 1; \
+        printf("Something went wrong with mmap()! %s\n", strerror(errno)); \
+        return errno; \
     }
 #define CLOSE_MMAP(mapped, size) \
     if (munmap(mapped, size) < 0){ \
-        printf("close mmap failed: %s\n", strerror(errno)); \
-        return 1; \
+        printf("Something went wrong with munmap()! %s\n", strerror(errno)); \
+        return errno; \
+    }
+#define SIGNAL(pid, sig) \
+    if (kill(pid, sig) < 0){ \
+        printf("Something went wrong with kill()! %s\n", strerror(errno)); \
+        return errno; \
+    }
+#define CREATE_FIFO(fileName) \
+    if(access(fileName, F_OK ) != -1) \
+        remove(fileName); \
+    if (mkfifo(fileName, FIFO_PERM) < 0) { \
+        printf("Something went wrong with mkfifo()! %s\n", strerror(errno)); \
+        return errno; \
+    }
+#define ASSIGN_SIGNAL(action, sig) \
+    if (0 != sigaction(sig, &action, NULL)) { \
+        printf("Something went wrong with sigaction()! %s\n", strerror(errno)); \
+        return errno; \
+    }
+#define WRITE(fd, buffer, size) \
+    if ((write(fd, buffer, size)) == -1){ \
+        printf("Something went wrong with write()! %s\n", strerror(errno)); \
+        close(fd); \
+        return errno; \
+    }
+#define OPEN(fd, filePath, oFlags) \
+    if ((fd = open(filePath, oFlags)) == -1){ \
+        printf("Something went wrong with open()! %s\n", strerror(errno)); \
+        return errno; \
     }
 
 static long flag = 0;
@@ -56,10 +86,7 @@ int main(int argc, char *argv[]) {
     new_action.sa_sigaction = my_signal_handler;
     new_action.sa_flags = SA_SIGINFO;
 
-    if (0 != sigaction(SIGUSR2, &new_action, NULL)) {
-        printf("Signal handle registration failed. %s\n", strerror(errno));
-        return 1;
-    }
+    ASSIGN_SIGNAL(new_action, SIGUSR2)
 
     char *charToCount = argv[1];
     char *textFileToProcess = argv[2];
@@ -69,9 +96,10 @@ int main(int argc, char *argv[]) {
     size_t sizeofPagesLength = (CEIL(length, PAGE_SIZE) + 1) * PAGE_SIZE;
     size_t sizeofPagesOffset = offset - offset % PAGE_SIZE;
     size_t offsetM = (size_t) (offset % PAGE_SIZE);
-    int fd = open(textFileToProcess, O_RDONLY);
+    int fd;
     const char *mapped;
-    OPEN_MMAP(mapped)
+    OPEN(fd, textFileToProcess, O_RDONLY)
+    OPEN_MMAP(mapped, sizeofPagesLength, fd, sizeofPagesOffset)
     close(fd);
     int i = offsetM;
     long count = 0;
@@ -83,16 +111,16 @@ int main(int argc, char *argv[]) {
 //    CLOSE_MMAP(mmap, sizeofPagesLength)
     char fileName[MAX_SIZE];
     sprintf(fileName, "/tmp/counter_%lu", (unsigned long) getpid());
-    mkfifo(fileName, 0666);
+    CREATE_FIFO(fileName)
     while (flag == 0) {
-        kill(getppid(), SIGUSR1);
-        sleep(1);
+        SIGNAL(getppid(), SIGUSR1)
+        sleep(WAIT_TIME);
     }
-    fd = open(fileName, O_WRONLY);
+    OPEN(fd, fileName, O_WRONLY)
     char countStr[MAX_SIZE];
     sprintf(countStr, "%ld", count);
-    write(fd, countStr, sizeof(countStr));
-    sleep(1);
+    WRITE(fd, countStr, sizeof(countStr));
+    sleep(WAIT_TIME);
     close(fd);
     UNLINK(fileName)
 }

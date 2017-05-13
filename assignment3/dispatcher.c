@@ -11,7 +11,8 @@
 #include <wait.h>
 
 #define MAX_SIZE 1024
-#define SMALL_M_SIZE 1024
+#define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
+#define SMALL_FILE_SIZE 2 * PAGE_SIZE
 #define SINGLE_PROCESS 1
 #define CEIL(x, y) 1 + ((x - 1) / y);
 #define READ_STAT(stat1) \
@@ -19,6 +20,28 @@
         printf("Something went wrong with stat()! %s\n", strerror(errno)); \
         return errno; \
     }
+#define ASSIGN_SIGNAL(action, sig) \
+    if (0 != sigaction(sig, &action, NULL)) { \
+        printf("Something went wrong with sigaction()! %s\n", strerror(errno)); \
+        return errno; \
+    }
+#define OPEN(fd, filePath, oFlags) \
+    if ((fd = open(filePath, oFlags)) == -1){ \
+        printf("Something went wrong with open()! %s\n", strerror(errno)); \
+        return; \
+    }
+#define SIGNAL(pid, sig) \
+    if (kill(pid, sig) < 0){ \
+        printf("Something went wrong with kill()! %s\n", strerror(errno)); \
+        return; \
+    }
+#define READ(fd, buffer, size) \
+    size_t readSize; \
+    if ((readSize = read(fd, buffer, size)) == -1){ \
+        printf("Something went wrong with read()! %s\n", strerror(errno)); \
+        close(fd); \
+    }
+
 
 static long counter = 0;
 
@@ -26,12 +49,13 @@ void my_signal_handler(int signum,
                        siginfo_t *info,
                        void *ptr) {
     unsigned long pid = (unsigned long) info->si_pid;
-    kill((pid_t)pid, SIGUSR2);
+    SIGNAL((pid_t)pid, SIGUSR2);
     char fileName[MAX_SIZE];
     sprintf(fileName, "/tmp/counter_%lu", pid);
-    int fd = open(fileName, O_RDONLY);
+    int fd;
+    OPEN(fd, fileName, O_RDONLY)
     char buffer[MAX_SIZE];
-    read(fd, buffer, MAX_SIZE);
+    READ(fd, buffer, MAX_SIZE);
     long count = 0;
     sscanf(buffer, "%ld", &count);
     counter += count;
@@ -50,10 +74,7 @@ int main(int argc, char *argv[]) {
     new_action.sa_sigaction = my_signal_handler;
     new_action.sa_flags = SA_SIGINFO;
 
-    if (0 != sigaction(SIGUSR1, &new_action, NULL)) {
-        printf("Signal handle registration failed. %s\n", strerror(errno));
-        return 1;
-    }
+    ASSIGN_SIGNAL(new_action, SIGUSR1)
 
     char *textFileToProcess = argv[2];
     struct stat *stat1;
@@ -63,14 +84,14 @@ int main(int argc, char *argv[]) {
     }
     READ_STAT(stat1)
     ssize_t fileSize = stat1->st_size;
-    long sqrtSize = (long)sqrt(stat1->st_size);
-    sqrtSize = sqrtSize < SMALL_M_SIZE ? SINGLE_PROCESS : sqrtSize;
+    long numOfProcs = (long)sqrt(stat1->st_size);
+    numOfProcs = numOfProcs < SMALL_FILE_SIZE ? SINGLE_PROCESS : numOfProcs;
 
     int i;
-    long length = CEIL(fileSize, sqrtSize);
+    long length = CEIL(fileSize, numOfProcs);
     char lengthStr[MAX_SIZE];
     char offsetStr[MAX_SIZE];
-    for (i = 0; i < sqrtSize; i++){
+    for (i = 0; i < numOfProcs; i++){
         pid_t j = fork();
         if (j == 0) {
             sprintf(lengthStr, "%ld", length * (i + 1) > fileSize ? fileSize - length * i : length);
