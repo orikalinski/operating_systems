@@ -16,6 +16,7 @@
 
 #define MAX_SIZE 1024
 #define FIFO_PERM 0666
+#define OPEN_PERMISSION 0777
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 #define CEIL(x, y) (1 + ((x - 1) / y))
 #define UNLINK(fileName) \
@@ -61,7 +62,7 @@
         return errno; \
     }
 #define OPEN(fd, filePath, oFlags) \
-    if ((fd = open(filePath, oFlags, 0777)) == -1){ \
+    if ((fd = open(filePath, oFlags, OPEN_PERMISSION)) == -1){ \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
         return errno; \
     }

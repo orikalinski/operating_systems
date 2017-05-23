@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #define MAX_SIZE 1024
+#define OPEN_PERMISSION 0777
 #define MAX_NUMBER_OF_PROCS 16
 #define PAGE_SIZE getpagesize()
 #define SIZE_PER_PROCESS 2 * PAGE_SIZE
@@ -25,7 +26,7 @@
         return errno; \
     }
 #define OPEN(fd, filePath, oFlags) \
-    if ((fd = open(filePath, oFlags, 0777)) == -1){ \
+    if ((fd = open(filePath, oFlags, OPEN_PERMISSION)) == -1){ \
         gotError = true; \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
         return; \
