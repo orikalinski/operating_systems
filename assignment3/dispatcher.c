@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
             break;
         }
     }
-    if (!gotError)
+    if (gotError)
         printf("Got Error, printing partial results\n");
     printf("The character: %s, was written: %ld times in the text file: %s\n", argv[1], counter, argv[2]);
     return 0;
