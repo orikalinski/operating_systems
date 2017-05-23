@@ -40,7 +40,7 @@
         return errno; \
     }
 #define CREATE_FIFO(fileName) \
-    if(access(fileName, F_OK ) != -1) \
+    if(file_exist(fileName)) \
         remove(fileName); \
     if (mkfifo(fileName, FIFO_PERM) < 0) { \
         printf("Something went wrong with mkfifo()! %s\n", strerror(errno)); \
@@ -64,6 +64,12 @@
     }
 
 static long flag = 0;
+
+int file_exist (char *filename)
+{
+    struct stat   buffer;
+    return (stat (filename, &buffer) == 0);
+}
 
 void my_signal_handler(int signum,
                        siginfo_t *info,
