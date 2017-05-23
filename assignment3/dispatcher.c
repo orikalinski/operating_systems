@@ -4,13 +4,14 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
-#include <math.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <wait.h>
+#include <stdbool.h>
 
 #define MAX_SIZE 1024
+#define MAX_NUMBER_OF_PROCS 16
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 #define SIZE_PER_PROCESS 2 * PAGE_SIZE
 #define CEIL(x, y) 1 + ((x - 1) / y);
@@ -26,28 +27,51 @@
     }
 #define OPEN(fd, filePath, oFlags) \
     if ((fd = open(filePath, oFlags)) == -1){ \
+        gotError = true; \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
         return; \
     }
 #define SIGNAL(pid, sig) \
     if (kill(pid, sig) < 0){ \
+        gotError = true; \
         printf("Something went wrong with kill()! %s\n", strerror(errno)); \
         return; \
     }
 #define READ(fd, buffer, size) \
     size_t readSize; \
     if ((readSize = read(fd, buffer, size)) == -1){ \
+        gotError = true; \
         printf("Something went wrong with read()! %s\n", strerror(errno)); \
         close(fd); \
+        return; \
+    }
+#define FORK(pid) \
+    if ((pid = fork()) < 0){ \
+        gotError = true; \
+        printf("Something went wrong with fork()! %s\n", strerror(errno)); \
     }
 
 
 static long counter = 0;
+static long procs[MAX_NUMBER_OF_PROCS];
+int currentProc = 0;
+bool gotError = false;
+
+bool already_handled_signal(long pid){
+    int i = 0;
+    for (; i < currentProc; i++)
+        if (procs[i] == pid)
+            return true;
+    return false;
+}
 
 void my_signal_handler(int signum,
                        siginfo_t *info,
                        void *ptr) {
     unsigned long pid = (unsigned long) info->si_pid;
+    if (already_handled_signal(pid)) return;
+    procs[currentProc] = pid;
+    currentProc++;
     SIGNAL((pid_t)pid, SIGUSR2);
     char fileName[MAX_SIZE];
     sprintf(fileName, "/tmp/counter_%lu", pid);
@@ -83,32 +107,34 @@ int main(int argc, char *argv[]) {
     }
     READ_STAT(stat1)
     ssize_t fileSize = stat1->st_size;
-    long numOfProcs = CEIL(fileSize, SIZE_PER_PROCESS)
-    numOfProcs = numOfProcs > 16 ? 16 : numOfProcs;
+    ssize_t numOfProcs = CEIL(fileSize, SIZE_PER_PROCESS)
+    numOfProcs = numOfProcs > MAX_NUMBER_OF_PROCS ? MAX_NUMBER_OF_PROCS : numOfProcs;
 
     int i;
     long length = CEIL(fileSize, numOfProcs);
     char lengthStr[MAX_SIZE];
     char offsetStr[MAX_SIZE];
+    pid_t pid;
     for (i = 0; i < numOfProcs; i++){
-        pid_t j = fork();
-        if (j == 0) {
+        FORK(pid)
+        if (pid == 0) {
             sprintf(lengthStr, "%ld", length * (i + 1) > fileSize ? fileSize - length * i : length);
             sprintf(offsetStr, "%ld", length * i);
-            execv("./counter",
-                  (char *[]) {"./counter", argv[1], argv[2], offsetStr, lengthStr, NULL});
+            int res = execv("./counter",
+                            (char *[]) {"./counter", argv[1], argv[2], offsetStr, lengthStr, NULL});
+            if (res != 0)
+                gotError = true;
             perror("execv");
             return 0;
         }
-        else if (j > 0);
-        else
-            printf("fork failed\n");
     }
     while (waitpid(-1, NULL, 0)) {
         if (errno == ECHILD) {
             break;
         }
     }
+    if (!gotError)
+        printf("Got Error, printing partial results\n");
     printf("The character: %s, was written: %ld times in the text file: %s\n", argv[1], counter, argv[2]);
     return 0;
 }

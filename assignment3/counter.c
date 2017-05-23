@@ -18,7 +18,6 @@
 
 #define MAX_SIZE 1024
 #define FIFO_PERM 0666
-#define WAIT_TIME 1
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 #define CEIL(x, y) (1 + ((x - 1) / y))
 #define UNLINK(fileName) \
@@ -114,13 +113,11 @@ int main(int argc, char *argv[]) {
     CREATE_FIFO(fileName)
     while (flag == 0) {
         SIGNAL(getppid(), SIGUSR1)
-        sleep(WAIT_TIME);
     }
     OPEN(fd, fileName, O_WRONLY)
     char countStr[MAX_SIZE];
     sprintf(countStr, "%ld", count);
     WRITE(fd, countStr, sizeof(countStr));
-    sleep(WAIT_TIME);
     close(fd);
     UNLINK(fileName)
 }
