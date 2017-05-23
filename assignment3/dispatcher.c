@@ -129,14 +129,16 @@ int main(int argc, char *argv[]) {
     }
     int status;
     while ((pid = waitpid(-1, &status, 0))) {
-        if (pid < 0)
+        if (pid < 0) {
             if (errno == ECHILD) {
                 break;
             }
-        else
-            if(WIFEXITED(status))
-                if(WEXITSTATUS(status) != 0)
+        }
+        else {
+            if (WIFEXITED(status))
+                if (WEXITSTATUS(status) != 0)
                     gotError = true;
+        }
     }
     if (gotError)
         printf("Got Error, printing partial results\n");
