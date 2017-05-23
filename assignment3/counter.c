@@ -61,7 +61,7 @@
         return errno; \
     }
 #define OPEN(fd, filePath, oFlags) \
-    if ((fd = open(filePath, oFlags)) == -1){ \
+    if ((fd = open(filePath, oFlags, 0777)) == -1){ \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
         return errno; \
     }
@@ -83,7 +83,7 @@ void my_signal_handler(int signum,
 int main(int argc, char *argv[]) {
     if (argc != 5) {
         printf("Wrong execution format, please pass the character to count, the text file to process, "
-                       "the offset and the length");
+                       "the offset and the length\n");
         return 1;
     }
 

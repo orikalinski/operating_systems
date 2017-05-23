@@ -11,9 +11,9 @@
 
 #define MAX_SIZE 1024
 #define MAX_NUMBER_OF_PROCS 16
-#define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
+#define PAGE_SIZE getpagesize()
 #define SIZE_PER_PROCESS 2 * PAGE_SIZE
-#define CEIL(x, y) 1 + ((x - 1) / y);
+#define CEIL(x, y) 1 + (((x) - 1) / (y));
 #define READ_STAT(stat1) \
     if (stat(textFileToProcess, stat1) < 0) { \
         printf("Something went wrong with stat()! %s\n", strerror(errno)); \
@@ -25,7 +25,7 @@
         return errno; \
     }
 #define OPEN(fd, filePath, oFlags) \
-    if ((fd = open(filePath, oFlags)) == -1){ \
+    if ((fd = open(filePath, oFlags, 0777)) == -1){ \
         gotError = true; \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
         return; \
