@@ -1,14 +1,14 @@
-#include <stdio.h>
-#include <malloc.h>
-#include <zconf.h>
 #include <sys/stat.h>
-#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdio.h>
 #include <errno.h>
+#include <string.h>
 #include <signal.h>
+#include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <wait.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define MAX_SIZE 1024
 #define MAX_NUMBER_OF_PROCS 16

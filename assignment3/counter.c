@@ -3,18 +3,16 @@
 //
 
 #include <stdio.h>
-#include <malloc.h>
-#include <zconf.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <errno.h>
-#include <math.h>
 #include <signal.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <stdarg.h>
-#include <ctype.h>
 
 #define MAX_SIZE 1024
 #define FIFO_PERM 0666
