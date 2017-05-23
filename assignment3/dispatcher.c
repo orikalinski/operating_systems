@@ -12,8 +12,7 @@
 
 #define MAX_SIZE 1024
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
-#define SMALL_FILE_SIZE 2 * PAGE_SIZE
-#define SINGLE_PROCESS 1
+#define SIZE_PER_PROCESS 2 * PAGE_SIZE
 #define CEIL(x, y) 1 + ((x - 1) / y);
 #define READ_STAT(stat1) \
     if (stat(textFileToProcess, stat1) < 0) { \
@@ -84,8 +83,8 @@ int main(int argc, char *argv[]) {
     }
     READ_STAT(stat1)
     ssize_t fileSize = stat1->st_size;
-    long numOfProcs = (long)sqrt(stat1->st_size);
-    numOfProcs = numOfProcs < SMALL_FILE_SIZE ? SINGLE_PROCESS : numOfProcs;
+    long numOfProcs = CEIL(fileSize, SIZE_PER_PROCESS)
+    numOfProcs = numOfProcs > 16 ? 16 : numOfProcs;
 
     int i;
     long length = CEIL(fileSize, numOfProcs);

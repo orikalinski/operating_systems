@@ -33,7 +33,7 @@
         return errno; \
     }
 #define CLOSE_MMAP(mapped, size) \
-    if (munmap(mapped, size) < 0){ \
+    if (munmap((void *)mapped, size) < 0){ \
         printf("Something went wrong with munmap()! %s\n", strerror(errno)); \
         return errno; \
     }
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
             count += 1;
         }
     }
-//    CLOSE_MMAP(mmap, sizeofPagesLength)
+    CLOSE_MMAP(mapped, sizeofPagesLength)
     char fileName[MAX_SIZE];
     sprintf(fileName, "/tmp/counter_%lu", (unsigned long) getpid());
     CREATE_FIFO(fileName)
