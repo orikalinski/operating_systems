@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -128,10 +127,16 @@ int main(int argc, char *argv[]) {
             return 0;
         }
     }
-    while (waitpid(-1, NULL, 0)) {
-        if (errno == ECHILD) {
-            break;
-        }
+    int status;
+    while ((pid = waitpid(-1, &status, 0))) {
+        if (pid < 0)
+            if (errno == ECHILD) {
+                break;
+            }
+        else
+            if(WIFEXITED(status))
+                if(WEXITSTATUS(status) != 0)
+                    gotError = true;
     }
     if (gotError)
         printf("Got Error, printing partial results\n");

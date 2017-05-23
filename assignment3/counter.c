@@ -41,7 +41,10 @@
     }
 #define CREATE_FIFO(fileName) \
     if(file_exist(fileName)) \
-        remove(fileName); \
+        if (remove(fileName) < 0) { \
+            printf("Something went wrong with mkfifo()! %s\n", strerror(errno)); \
+            return errno; \
+    } \
     if (mkfifo(fileName, FIFO_PERM) < 0) { \
         printf("Something went wrong with mkfifo()! %s\n", strerror(errno)); \
         return errno; \
