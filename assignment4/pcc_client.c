@@ -1,21 +1,35 @@
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <netinet/in.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <math.h>
 
 // MINIMAL ERROR HANDLING FOR EASE OF READING
 #define BUFFER_SIZE 1024
 
+#define WRITE(fd, buffer, size) \
+    if ((nsent = write(fd, buffer, size)) == -1){ \
+        printf("Something went wrong with write()! %s\n", strerror(errno)); \
+        close(fd); \
+        return errno; \
+    }
+#define READ(fd, buffer, size) \
+    size_t readSize; \
+    if ((readSize = read(fd, buffer, size)) == -1){ \
+        printf("Something went wrong with read()! %s\n", strerror(errno)); \
+        close(fd); \
+        return errno; \
+    }
+#define OPEN(fd, filePath, oFlags) \
+    if ((fd = open(filePath, oFlags)) == -1){ \
+        printf("Something went wrong with open()! %s\n", strerror(errno)); \
+        return errno; \
+    }
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -27,7 +41,9 @@ int main(int argc, char *argv[]) {
     int sockfd;
     int totalsent;
     int nsent;
-    char data_buff[1025];
+    int batchSize;
+    int batchSent;
+    char dataBuffer[BUFFER_SIZE];
 
     struct sockaddr_in serv_addr;
     struct sockaddr_in my_addr;
@@ -74,64 +90,46 @@ int main(int argc, char *argv[]) {
     // write data to server from urandom
     // block until there's something to read
     // print data to screen every time
-    int randfd = open("/dev/urandom", O_RDONLY);
+    int randfd;
+    OPEN(randfd, "/dev/urandom", O_RDONLY)
     totalsent = 0;
-    int notwritten;
     int nDigits = (int) (floor(log10(abs(len))) + 1);
-    notwritten = nDigits + 1;
-    sprintf(data_buff, "%d#", len);
-    data_buff[notwritten] = '\0';
-    while (notwritten > 0) {
-        // notwritten = how much we have left to write
-        // totalsent  = how much we've written so far
-        // nsent = how much we've written in last write() call */
-        nsent = (int) write(sockfd,
-                            data_buff + nDigits + 1 - notwritten,
-                            (size_t) (notwritten));
-        // check if error occured (client closed connection?)
-        if (nsent < 0) {
-            printf("\n Error : nsent < 0. %s \n", strerror(errno));
-            return 1;
-        }
+    sprintf(dataBuffer, "%d#", len);
+    batchSize = nDigits + 1;
+    batchSent = 0;
+    while (batchSent < batchSize) {
+        WRITE(sockfd, dataBuffer + batchSent, (size_t) (batchSize))
         printf("Client: wrote %d bytes\n", nsent);
-        notwritten -= nsent;
+        batchSent += nsent;
     }
 
     while (totalsent < len) {
-        notwritten = BUFFER_SIZE < len - totalsent ? BUFFER_SIZE : len - totalsent;
-        read(randfd, data_buff, (size_t) notwritten);
-        // keep looping until nothing left to write
-        while (notwritten > 0) {
-            // notwritten = how much we have left to write
-            // totalsent  = how much we've written so far
-            // nsent = how much we've written in last write() call */
-            nsent = (int) write(sockfd,
-                                data_buff + BUFFER_SIZE - notwritten,
-                                (size_t) notwritten);
+        batchSize = BUFFER_SIZE < len - totalsent ? BUFFER_SIZE : len - totalsent;
+        READ(randfd, dataBuffer, (size_t) batchSize)
+        batchSent = 0;
+        while (batchSent < batchSize) {
+            WRITE(sockfd, dataBuffer + batchSent, (size_t) batchSize);
             // check if error occured (client closed connection?)
             if (nsent < 0) {
                 printf("\n Error : nsent < 0. %s \n", strerror(errno));
                 return 1;
             }
             printf("Client: wrote %d bytes\n", nsent);
-
             totalsent += nsent;
-            notwritten -= nsent;
+            batchSent += nsent;
         }
     }
     char result[BUFFER_SIZE];
-    int bytes_read;
     int i;
     printf("Number of filtered bytes read: ");
     while (1) {
-        bytes_read = (int) read(sockfd, result, BUFFER_SIZE);
-        for (i = 0; i < bytes_read; i++) {
+        READ(sockfd, result, BUFFER_SIZE)
+        for (i = 0; i < readSize; i++) {
             printf("%c", result[i]);
         }
-        if (bytes_read <= 0) break;
+        if (readSize <= 0) break;
     }
     printf("\n");
-    close(sockfd); // is socket really done here?
-    //printf("Write after close returns %d\n", write(sockfd, recvBuff, 1));
+    close(sockfd);
     return 0;
 }
