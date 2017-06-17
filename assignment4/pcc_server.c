@@ -43,18 +43,27 @@
         close(fd); \
         return errno; \
     }
-#define LOCK(lock) \
+#define LOCK(lock, fd, isThread) \
     if (pthread_mutex_lock(&lock) != 0) {\
         printf("Something went wrong with the pthread_mutex_lock()! \n"); \
-        close(connfd); \
-        pthread_exit(NULL); \
+        close(fd); \
+        if (isThread) pthread_exit(NULL); \
+        else exit(1); \
     }
-#define UNLOCK(lock) \
+#define UNLOCK(lock, fd, isThread) \
     if (pthread_mutex_unlock(&lock) != 0) {\
         printf("Something went wrong with the pthread_mutex_unlock()! \n"); \
-        close(connfd); \
-        pthread_exit(NULL); \
+        close(fd); \
+        if (isThread) pthread_exit(NULL); \
+        else exit(1); \
+}
+#define DESTROY(lock, fd) \
+    if (pthread_mutex_destroy(&lock) != 0) {\
+        printf("Something went wrong with the pthread_mutex_destroy()! \n"); \
+        close(fd); \
+        exit(1); \
     }
+
 
 pthread_mutex_t lock;
 int GLOBS_STATS[NUM_OF_PRINTABLE] = {0};
@@ -84,7 +93,10 @@ void sigint_handler(int signum,
             break;
         }
     }
+    LOCK(lock, listenfd, 0)
     printStats(GLOBAL_COUNTER, GLOBS_STATS);
+    UNLOCK(lock, listenfd, 0)
+    DESTROY(lock, listenfd);
     close(listenfd);
     exit(0);
 }
@@ -127,12 +139,12 @@ void *handleClient(void *vargp) {
         WRITE(connfd, result, (size_t) nDigits);
         totalSent += nsent;
     }
-    LOCK(lock)
+    LOCK(lock, connfd, 1)
     numOfThreads -= 1;
     for (i = 0; i < NUM_OF_PRINTABLE; i++)
         GLOBS_STATS[i] += localStats[i];
     GLOBAL_COUNTER += totalRead;
-    UNLOCK(lock)
+    UNLOCK(lock, connfd, 1)
     /* close socket  */
     close(connfd);
     pthread_exit(NULL);
