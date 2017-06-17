@@ -10,6 +10,7 @@
 #include <math.h>
 #include <pthread.h>
 
+#define BACKLOG 128
 #define BUFFER_SIZE 1024
 #define NUM_OF_PRINTABLE 95
 #define CREATE_THREAD(tid, connfd) \
@@ -42,7 +43,18 @@
         close(fd); \
         return errno; \
     }
-
+#define LOCK(lock) \
+    if (pthread_mutex_lock(&lock) != 0) {\
+        printf("Something went wrong with the pthread_mutex_lock()! \n"); \
+        close(connfd); \
+        pthread_exit(NULL); \
+    }
+#define UNLOCK(lock) \
+    if (pthread_mutex_unlock(&lock) != 0) {\
+        printf("Something went wrong with the pthread_mutex_unlock()! \n"); \
+        close(connfd); \
+        pthread_exit(NULL); \
+    }
 
 pthread_mutex_t lock;
 int GLOBS_STATS[NUM_OF_PRINTABLE] = {0};
@@ -115,16 +127,15 @@ void *handleClient(void *vargp) {
         WRITE(connfd, result, (size_t) nDigits);
         totalSent += nsent;
     }
-    pthread_mutex_lock(&lock);
+    LOCK(lock)
     numOfThreads -= 1;
     for (i = 0; i < NUM_OF_PRINTABLE; i++)
         GLOBS_STATS[i] += localStats[i];
     GLOBAL_COUNTER += totalRead;
-    pthread_mutex_unlock(&lock);
+    UNLOCK(lock)
     /* close socket  */
     close(connfd);
     pthread_exit(NULL);
-    return 0;
 }
 
 
@@ -156,7 +167,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (0 != listen(listenfd, 10000)) {
+    if (0 != listen(listenfd, BACKLOG)) {
         printf("\n Error : Listen Failed. %s \n", strerror(errno));
         return 1;
     }
