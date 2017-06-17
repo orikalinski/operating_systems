@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <math.h>
 
-// MINIMAL ERROR HANDLING FOR EASE OF READING
 #define BUFFER_SIZE 1024
 
 #define WRITE(fd, buffer, size) \
@@ -29,6 +28,11 @@
     if ((fd = open(filePath, oFlags)) == -1){ \
         printf("Something went wrong with open()! %s\n", strerror(errno)); \
         return errno; \
+    }
+#define CONNECT(sockfd, serv_addr) \
+    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) { \
+        printf("Something went wrong with connect()! %s\n", strerror(errno)); \
+        return 1; \
     }
 
 int main(int argc, char *argv[]) {
@@ -71,12 +75,7 @@ int main(int argc, char *argv[]) {
     printf("Client: connecting...\n");
     // Note: what about the client port number?
     // connect socket to the target address
-    if (connect(sockfd,
-                (struct sockaddr *) &serv_addr,
-                sizeof(serv_addr)) < 0) {
-        printf("\n Error : Connect Failed. %s \n", strerror(errno));
-        return 1;
-    }
+    CONNECT(sockfd, serv_addr)
 
     // print socket details again
     getsockname(sockfd, (struct sockaddr *) &my_addr, &addrsize);
