@@ -14,7 +14,8 @@
 #define NUM_OF_PRINTABLE 95
 #define CREATE_THREAD(tid, connfd) \
     if ((pthread_create(&tid, NULL, handleClient, (int *)connfd)) < 0){ \
-        printf("Something went wrong with fork()! %s\n", strerror(errno)); \
+        printf("Something went wrong with pthread_create()!\n"); \
+        continue; \
     }
 #define ASSIGN_SIGNAL(action, sig) \
     if (0 != sigaction(sig, &action, NULL)) { \
@@ -32,7 +33,7 @@
                          (struct sockaddr *) &peer_addr, \
                          &addrsize)) < 0) { \
         printf("Something went wrong with accept(). %s\n", strerror(errno)); \
-        return 1; \
+        continue; \
     }
 #define READ(fd, buffer, size) \
     size_t readSize; \
@@ -47,7 +48,6 @@ pthread_mutex_t lock;
 int GLOBS_STATS[NUM_OF_PRINTABLE] = {0};
 int GLOBAL_COUNTER = 0;
 int numOfThreads = 0;
-pthread_t *threads;
 int listenfd;
 
 void printStats(int numberOfBytesRead, int *stats) {
@@ -65,26 +65,16 @@ void sigint_handler(int signum,
                     siginfo_t *info,
                     void *ptr) {
     int i = 0;
-    char *ret;
-    for (; i < numOfThreads; i++) {
-        pthread_join(threads[i], (void **) &ret);
+    for (; i < 5; i++){
+        if (numOfThreads > 0)
+            sleep(1);
+        else {
+            break;
+        }
     }
-    free(threads);
     printStats(GLOBAL_COUNTER, GLOBS_STATS);
     close(listenfd);
-}
-
-
-int dynamicChangeArraySize(pthread_t **arr, int numOfElements) {
-    pthread_t *tmp;
-    tmp = realloc(*arr, (numOfElements + 1) * sizeof **arr);
-    if (!tmp) {
-        printf("Could not resize the array");
-        return 1;
-    } else {
-        *arr = tmp;
-        return 0;
-    }
+    exit(0);
 }
 
 
@@ -105,7 +95,7 @@ void *handleClient(void *vargp) {
                 if (dataBuffer[i] == '#') {
                     readLen = 1;
                     len = atoi(lenBuffer);
-                    readSize -= (i + 1);
+                    totalRead -= (i + 1);
                     continue;
                 }
                 lenBuffer[i] = dataBuffer[i];
@@ -126,12 +116,14 @@ void *handleClient(void *vargp) {
         totalSent += nsent;
     }
     pthread_mutex_lock(&lock);
+    numOfThreads -= 1;
     for (i = 0; i < NUM_OF_PRINTABLE; i++)
         GLOBS_STATS[i] += localStats[i];
     GLOBAL_COUNTER += totalRead;
     pthread_mutex_unlock(&lock);
     /* close socket  */
     close(connfd);
+    pthread_exit(NULL);
     return 0;
 }
 
@@ -164,12 +156,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (0 != listen(listenfd, 10)) {
+    if (0 != listen(listenfd, 10000)) {
         printf("\n Error : Listen Failed. %s \n", strerror(errno));
         return 1;
     }
     pthread_t tid;
-    threads = malloc(0);
     while (1) {
         // Prepare for a new connection
         socklen_t addrsize = sizeof(struct sockaddr_in);
@@ -188,8 +179,6 @@ int main(int argc, char *argv[]) {
                ntohs(my_addr.sin_port));
 
         CREATE_THREAD(tid, connfd)
-        dynamicChangeArraySize(&threads, numOfThreads);
-        threads[numOfThreads] = tid;
-        numOfThreads++;
+        numOfThreads += 1;
     }
 }
