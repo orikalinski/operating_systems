@@ -1,14 +1,32 @@
 //https://stackoverflow.com/questions/4384359/quick-way-to-implement-dictionary-in-c
 
-
-struct nlist { /* table entry: */
-    struct nlist *next; /* next entry in chain */
-    struct nlist *previous; /* previous entry in chain */
-    char *name; /* defined name */
-    messageInfo *defn; /* replacement text */
-};
+#include "hashmap.h"
 
 static struct nlist *hashtab[HASHSIZE];
+
+messageInfo *messageSlotDup(messageInfo *messageInfo1) /* make a duplicate of messageInfo1 */
+{
+    int i = 0;
+    messageInfo *messageInfo2;
+    messageInfo2 = (messageInfo *) kmalloc(sizeof(messageInfo), GFP_KERNEL);
+    if (messageInfo2 != NULL){
+        for (; i < BUFF_LEN; i++) {
+            messageInfo2->channelBuff1[i] = messageInfo1->channelBuff1[i];
+            messageInfo2->channelBuff2[i] = messageInfo1->channelBuff2[i];
+            messageInfo2->channelBuff3[i] = messageInfo1->channelBuff3[i];
+            messageInfo2->channelBuff4[i] = messageInfo1->channelBuff4[i];
+        }
+        messageInfo2->currentChannelIndex = messageInfo1->currentChannelIndex;
+    }
+    return messageInfo2;
+}
+
+char *strdup (const char *s) {
+    char *d = kmalloc (strlen (s) + 1, GFP_KERNEL);   // Space for length plus nul
+    if (d == NULL) return NULL;          // No memory
+    strcpy (d, s);                        // Copy the characters
+    return d;                            // Return the new string
+}
 
 /* hash: form hash value for string s */
 unsigned hash(char *s)
@@ -29,8 +47,6 @@ struct nlist *lookup(char *s)
     return NULL; /* not found */
 }
 
-char *strdup(char *);
-char *messageSlotDup(char *);
 /* install: put (name, defn) in hashtab */
 struct nlist *install(char *name, messageInfo *defn)
 {
@@ -54,7 +70,6 @@ struct nlist *install(char *name, messageInfo *defn)
 struct nlist *pop(char *name)
 {
     struct nlist *np;
-    unsigned hashval;
     if ((np = lookup(name)) == NULL) { /* not found */
         return NULL;
     } else {/* already there */
@@ -66,29 +81,3 @@ struct nlist *pop(char *name)
         return np;
     }
 }
-
-char *strdup(char *s) /* make a duplicate of s */
-{
-    char *p;
-    p = (char *) kmalloc(strlen(s)+1, GFP_KERNEL); /* +1 for ’\0’ */
-    if (p != NULL)
-        strcpy(p, s);
-    return p;
-}
-
-messageInfo *messageSlotDup(messageInfo *messageInfo1) /* make a duplicate of messageInfo1 */
-{
-    messageInfo *messageInfo2;
-    messageInfo2 = (messageInfo *) kmalloc(sizeof(messageInfo), GFP_KERNEL);
-    if (messageInfo2 != NULL){
-        messageInfo2->channelBuff1 = messageInfo1->channelBuff1;
-        messageInfo2->channelBuff2 = messageInfo1->channelBuff2;
-        messageInfo2->channelBuff3 = messageInfo1->channelBuff3;
-        messageInfo2->channelBuff4 = messageInfo1->channelBuff4;
-        messageInfo2->currentChannelIndex = messageInfo1->currentChannelIndex;
-    }
-    return messageInfo2;
-}
-
-
-
