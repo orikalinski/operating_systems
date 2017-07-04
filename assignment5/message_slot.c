@@ -131,16 +131,19 @@ static int device_open(struct inode *inode, struct file *file)
      */
     spin_lock_irqsave(&device_info.lock, flags);
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
-    printk("Got device with unique_id %s", uniqueId);
+    printk("Got device with unique_id %s\n", uniqueId);
     if (lookup(uniqueId)){
-        printk("Someone is already using that device with unique_id %s", uniqueId);
+        printk("Someone is already using that device with unique_id %s\n", uniqueId);
         spin_unlock_irqrestore(&device_info.lock, flags);
         return -EBUSY;
     }
-    printk("Creating new struct for device with unique_id %s", uniqueId);
+    printk("Creating new struct for device with unique_id %s\n", uniqueId);
     messageInfo2 = (messageInfo *) kmalloc(sizeof(messageInfo), GFP_KERNEL);
+    printk("malloced messageInfo device with unique_id %s\n", uniqueId);
     install(uniqueId, messageInfo2);
+    printk("installed struct for device with unique_id %s\n", uniqueId);
     kfree((void *)messageInfo2);
+    printk("freed struct for device with unique_id %s\n", uniqueId);
     spin_unlock_irqrestore(&device_info.lock, flags);
 
     return SUCCESS;
