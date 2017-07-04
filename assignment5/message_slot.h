@@ -8,6 +8,20 @@
 #define HASHSIZE 101
 #define BUFF_LEN 128
 #define NULL 0
+/* The major device number. We can't rely on dynamic
+ * registration any more, because ioctls need to know
+ * it. */
+#define MAJOR_NUM 245
+
+
+/* Set the message of the device driver */
+#define IOCTL_SET_ENC _IOW(MAJOR_NUM, 0, unsigned long)
+
+#define DEVICE_RANGE_NAME "message_slot"
+#define DEVICE_FILE_NAME "message_slot"
+#define SUCCESS 0
+
+
 
 #include <linux/ioctl.h>
 #include <linux/kernel.h>   /* We're doing kernel work */
@@ -32,19 +46,5 @@ struct nlist { /* table entry: */
     char *name; /* defined name */
     messageInfo *defn; /* replacement text */
 };
-
-/* The major device number. We can't rely on dynamic
- * registration any more, because ioctls need to know
- * it. */
-#define MAJOR_NUM 245
-
-
-/* Set the message of the device driver */
-#define IOCTL_SET_ENC _IOW(MAJOR_NUM, 0, unsigned long)
-
-#define DEVICE_RANGE_NAME "message_slot"
-#define BUF_LEN 80
-#define DEVICE_FILE_NAME "message_slot"
-#define SUCCESS 0
 
 #endif //ASSIGNMENT5_MESSAGE_SLOT_H
