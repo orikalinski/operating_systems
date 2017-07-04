@@ -216,12 +216,12 @@ static long device_ioctl(//struct inode*  inode,
     struct nlist *np;
     char uniqueId[ID_LEN];
 
-    if (ioctl_param < 0 || ioctl_param > 3) return 1;
+    if (ioctl_param < 0 || ioctl_param > 3) return -1;
 
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     if (!(np = lookup(uniqueId))) {
         printk("Couldn't find device (%p), wasn't opened yet\n", file);
-        return 1;
+        return -1;
     }
     np->defn->currentChannelIndex = ioctl_param;
     return SUCCESS;
