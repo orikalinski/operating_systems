@@ -194,7 +194,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     }
 
     // TODO: adding zeros to the end of the buffer
-    for (i = 0; i < BUF_LEN; i++) {
+    for (i = 0; i < BUFF_LEN; i++) {
         if (np->defn->currentChannelIndex == 0)
             get_user(np->defn->channelBuff1[i], buffer + i);
         if (np->defn->currentChannelIndex == 1)
