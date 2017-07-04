@@ -4,6 +4,15 @@
 
 #include "message_slot.h"
 
+#include <linux/ioctl.h>
+#include <linux/kernel.h>   /* We're doing kernel work */
+#include <linux/module.h>   /* Specifically, a module */
+#include <linux/fs.h>       /* for register_chrdev */
+#include <asm/uaccess.h>    /* for get_user and put_user */
+#include <linux/string.h>   /* for memset. NOTE - not string.h!*/
+#include <linux/slab.h>
+
+
 /* Declare what kind of code we want from the header files
    Defining __KERNEL__ and MODULE allows us to access kernel-level
    code not usually available to userspace programs. */
