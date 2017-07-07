@@ -209,8 +209,8 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
         return 1;
     }
 
-    // TODO: adding zeros to the end of the buffer
-    for (i = 0; i < BUFF_LEN; i++) {
+    printk("Current channel index: %hu", np->defn->currentChannelIndex);
+    for (i = 0; i < length; i++) {
         if (np->defn->currentChannelIndex == 0)
             get_user(np->defn->channelBuff1[i], buffer + i);
         if (np->defn->currentChannelIndex == 1)
@@ -220,7 +220,16 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
         if (np->defn->currentChannelIndex == 3)
             get_user(np->defn->channelBuff4[i], buffer + i);
     }
-
+    for (;i < BUFF_LEN; i++) {
+        if (np->defn->currentChannelIndex == 0)
+            np->defn->channelBuff1[i] =  '\0';
+        if (np->defn->currentChannelIndex == 1)
+            np->defn->channelBuff2[i] =  '\0';
+        if (np->defn->currentChannelIndex == 2)
+            np->defn->channelBuff3[i] =  '\0';
+        if (np->defn->currentChannelIndex == 3)
+            np->defn->channelBuff4[i] =  '\0';
+    }
     /* return the number of input characters used */
     return i;
 }
