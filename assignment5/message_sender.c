@@ -26,7 +26,7 @@ int main(int argc, const char *argv[]) {
         exit(-1);
     }
 
-    ret_val = ioctl(file_desc, IOCTL_SET_CHA, channelIndex);
+    ret_val = ioctl(file_desc, IOCTL_SET_CHA , channelIndex);
     
     if (ret_val < 0) {
         printf("ioctl_set_msg failed:%d\n", ret_val);

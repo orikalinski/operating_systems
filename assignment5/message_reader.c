@@ -16,7 +16,7 @@ int main(int argc, const char *argv[]) {
     char message[BUFF_LEN];
 
 
-    file_desc = open("/dev/"DEVICE_FILE_NAME, 0);
+    file_desc = open("/dev/"DEVICE_FILE_NAME, O_RDONLY);
     if (file_desc < 0) {
         printf("Can't open device file: %s\n",
                DEVICE_FILE_NAME);
@@ -31,6 +31,8 @@ int main(int argc, const char *argv[]) {
     }
 
     if (read(file_desc, message, BUFF_LEN) < 0) return 1;
+
+    printf("The message is: %s", message);
 
     close(file_desc);
     return 0;

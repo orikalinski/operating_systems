@@ -179,23 +179,28 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
                            size_t length,  /* length of the buffer     */
                            loff_t *offset) {
     /* read doesnt really do anything (for now) */
+    int i;
     char uniqueId[ID_LEN];
+
     struct nlist *np;
+    printk("device_read(%p,%lu)\n", file, length);
+
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     if ((np = lookup(uniqueId)) == NULL) {
         printk("Couldn't find device(%p), wasn't opened yet\n", file);
         return -1;
     }
-    if (np->defn->currentChannelIndex == 0)
-        printk("device_read(%p,%lu) - operation not supported yet (last written - %s)\n", file, length, np->defn->channelBuff1);
-    if (np->defn->currentChannelIndex == 1)
-        printk("device_read(%p,%lu) - operation not supported yet (last written - %s)\n", file, length, np->defn->channelBuff2);
-    if (np->defn->currentChannelIndex == 2)
-        printk("device_read(%p,%lu) - operation not supported yet (last written - %s)\n", file, length, np->defn->channelBuff3);
-    if (np->defn->currentChannelIndex == 3)
-        printk("device_read(%p,%lu) - operation not supported yet (last written - %s)\n", file, length, np->defn->channelBuff4);
-
-    return -EINVAL; // invalid argument error
+    for (i = 0; i < length; i++) {
+        if (np->defn->currentChannelIndex == 0)
+            put_user(np->defn->channelBuff1[i], buffer + i);
+        if (np->defn->currentChannelIndex == 1)
+            put_user(np->defn->channelBuff2[i], buffer + i);
+        if (np->defn->currentChannelIndex == 2)
+            put_user(np->defn->channelBuff3[i], buffer + i);
+        if (np->defn->currentChannelIndex == 3)
+            put_user(np->defn->channelBuff4[i], buffer + i);
+    }
+    return SUCCESS; // invalid argument error
 }
 
 /* somebody tries to write into our device file */
