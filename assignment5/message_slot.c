@@ -160,22 +160,22 @@ static int device_open(struct inode *inode, struct file *file)
 
 static int device_release(struct inode *inode, struct file *file)
 {
-    char uniqueId[ID_LEN];
-    unsigned long flags; // for spinlock
+//    char uniqueId[ID_LEN];
+//    unsigned long flags; // for spinlock
     printk("device_release(%p,%p)\n", inode, file);
 
-    /* ready for our next caller */
-    spin_lock_irqsave(&device_info.lock, flags);
-    sprintf(uniqueId, "%lu", file->f_inode->i_ino);
-    printk("Looking for device with unique_id %s\n", uniqueId);
-    if (lookup(uniqueId)) {
-        printk("pops out device with unique_id %s\n", uniqueId);
-        pop(uniqueId);
-    }
-    else {
-        printk("Couldn't release device(%p,%p), wasn't opened yet\n", inode, file);
-    }
-    spin_unlock_irqrestore(&device_info.lock, flags);
+//    /* ready for our next caller */
+//    spin_lock_irqsave(&device_info.lock, flags);
+//    sprintf(uniqueId, "%lu", file->f_inode->i_ino);
+//    printk("Looking for device with unique_id %s\n", uniqueId);
+//    if (lookup(uniqueId)) {
+//        printk("pops out device with unique_id %s\n", uniqueId);
+//        pop(uniqueId);
+//    }
+//    else {
+//        printk("Couldn't release device(%p,%p), wasn't opened yet\n", inode, file);
+//    }
+//    spin_unlock_irqrestore(&device_info.lock, flags);
 
     return SUCCESS;
 }
