@@ -184,7 +184,7 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     if ((np = lookup(uniqueId)) == NULL) {
         printk("Couldn't find device(%p), wasn't opened yet\n", file);
-        return 1;
+        return -1;
     }
     if (np->defn->currentChannelIndex == 0)
         printk("device_read(%p,%lu) - operation not supported yet (last written - %s)\n", file, length, np->defn->channelBuff1);
@@ -208,7 +208,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     if (!(np = lookup(uniqueId))) {
         printk("Couldn't find device(%p), wasn't opened yet\n", file);
-        return 1;
+        return -1;
     }
 
     printk("Current channel index: %hu", np->defn->currentChannelIndex);
