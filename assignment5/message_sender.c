@@ -19,6 +19,7 @@ int main(int argc, const char *argv[]) {
 
 
     file_desc = open("/dev/"DEVICE_FILE_NAME, 0);
+    printf("file descriptor: %d\n", file_desc);
     if (file_desc < 0) {
         printf("Can't open device file: %s\n",
                DEVICE_FILE_NAME);
