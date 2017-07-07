@@ -219,11 +219,13 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
         return -1;
     }
 
-    printk("Writing content device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
+    printk("Writing content for device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
     for (i = 0; i < length; i++)
         get_user(np->defn->channelBuffs[np->defn->currentChannelIndex][i], buffer + i);
     for (;i < BUFF_LEN; i++)
         np->defn->channelBuffs[np->defn->currentChannelIndex][i] =  '\0';
+    printk("Wrote content:%s for device with unique_id %s, channel_id: %hu\n",
+           np->defn->channelBuffs[np->defn->currentChannelIndex][i], uniqueId, np->defn->currentChannelIndex);
 
     /* return the number of input characters used */
     return i;
