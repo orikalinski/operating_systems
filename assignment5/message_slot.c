@@ -147,6 +147,7 @@ static int device_open(struct inode *inode, struct file *file)
     }
     printk("Creating new struct for device with unique_id %s\n", uniqueId);
     messageInfo2 = (messageInfo *) kmalloc(sizeof(messageInfo), GFP_KERNEL);
+    memset(messageInfo2->channelBuffs, '\0', 1 * NUM_OF_BUFFERS * BUFF_LEN);
     printk("malloced messageInfo device with unique_id %s\n", uniqueId);
     install(uniqueId, messageInfo2);
     printk("installed struct for device with unique_id %s\n", uniqueId);
