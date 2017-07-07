@@ -142,6 +142,7 @@ static int device_open(struct inode *inode, struct file *file)
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     printk("Got device with unique_id %s\n", uniqueId);
     if (lookup(uniqueId)){
+        spin_unlock_irqrestore(&device_info.lock, flags);
         return SUCCESS;
     }
     printk("Creating new struct for device with unique_id %s\n", uniqueId);
@@ -221,7 +222,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     for (i = 0; i < length; i++)
         get_user(np->defn->channelBuffs[np->defn->currentChannelIndex][i], buffer + i);
     for (;i < BUFF_LEN; i++)
-        np->defn->channelBuffs[np->defn->currentChannelIndex][i] =  '\0';
+        np->defn->channelBuffs[np->defn->currentChannelIndex][i] = '\0';
     printk("Wrote content:%s for device with unique_id %s, channel_id: %hu\n",
            np->defn->channelBuffs[np->defn->currentChannelIndex], uniqueId, np->defn->currentChannelIndex);
 

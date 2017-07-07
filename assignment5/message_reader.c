@@ -31,7 +31,7 @@ int main(int argc, const char *argv[]) {
         exit(-1);
     }
 
-    ret_val = read(file_desc, message, BUFF_LEN);
+    ret_val = (int) read(file_desc, message, BUFF_LEN);
 
     if (ret_val < 0) {
         printf("read failed:%s\n", strerror(errno));
