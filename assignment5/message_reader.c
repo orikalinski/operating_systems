@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>  /* ioctl */
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 int main(int argc, const char *argv[]) {
     int file_desc, ret_val;
