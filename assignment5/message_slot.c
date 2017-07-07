@@ -40,14 +40,14 @@ static struct nlist *hashtab[HASHSIZE];
 messageInfo *messageSlotDup(messageInfo *messageInfo1) /* make a duplicate of messageInfo1 */
 {
     int i = 0;
+    int j = 0;
     messageInfo *messageInfo2;
     messageInfo2 = (messageInfo *) kmalloc(sizeof(messageInfo), GFP_KERNEL);
     if (messageInfo2 != NULL){
-        for (; i < BUFF_LEN; i++) {
-            messageInfo2->channelBuff1[i] = messageInfo1->channelBuff1[i];
-            messageInfo2->channelBuff2[i] = messageInfo1->channelBuff2[i];
-            messageInfo2->channelBuff3[i] = messageInfo1->channelBuff3[i];
-            messageInfo2->channelBuff4[i] = messageInfo1->channelBuff4[i];
+        for (; i < NUM_OF_BUFFERS; i++) {
+            for (j = 0; j < BUFF_LEN; j++) {
+                messageInfo2->channelBuffs[i][j] = messageInfo1->channelBuffs[i][j];
+            }
         }
         messageInfo2->currentChannelIndex = messageInfo1->currentChannelIndex;
     }
@@ -200,16 +200,8 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
         return -1;
     }
     printk("Reading content device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
-    for (i = 0; i < length; i++) {
-        if (np->defn->currentChannelIndex == 0)
-            put_user(np->defn->channelBuff1[i], buffer + i);
-        if (np->defn->currentChannelIndex == 1)
-            put_user(np->defn->channelBuff2[i], buffer + i);
-        if (np->defn->currentChannelIndex == 2)
-            put_user(np->defn->channelBuff3[i], buffer + i);
-        if (np->defn->currentChannelIndex == 3)
-            put_user(np->defn->channelBuff4[i], buffer + i);
-    }
+    for (i = 0; i < length; i++)
+        put_user(np->defn->channelBuffs[np->defn->currentChannelIndex][i], buffer + i);
     return i;
 }
 
@@ -228,26 +220,11 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     }
 
     printk("Writing content device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
-    for (i = 0; i < length; i++) {
-        if (np->defn->currentChannelIndex == 0)
-            get_user(np->defn->channelBuff1[i], buffer + i);
-        if (np->defn->currentChannelIndex == 1)
-            get_user(np->defn->channelBuff2[i], buffer + i);
-        if (np->defn->currentChannelIndex == 2)
-            get_user(np->defn->channelBuff3[i], buffer + i);
-        if (np->defn->currentChannelIndex == 3)
-            get_user(np->defn->channelBuff4[i], buffer + i);
-    }
-    for (;i < BUFF_LEN; i++) {
-        if (np->defn->currentChannelIndex == 0)
-            np->defn->channelBuff1[i] =  '\0';
-        if (np->defn->currentChannelIndex == 1)
-            np->defn->channelBuff2[i] =  '\0';
-        if (np->defn->currentChannelIndex == 2)
-            np->defn->channelBuff3[i] =  '\0';
-        if (np->defn->currentChannelIndex == 3)
-            np->defn->channelBuff4[i] =  '\0';
-    }
+    for (i = 0; i < length; i++)
+        get_user(np->defn->channelBuffs[np->defn->currentChannelIndex][i], buffer + i);
+    for (;i < BUFF_LEN; i++)
+        np->defn->channelBuffs[np->defn->currentChannelIndex][i] =  '\0';
+
     /* return the number of input characters used */
     return i;
 }

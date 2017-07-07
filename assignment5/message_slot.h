@@ -7,6 +7,7 @@
 
 #define HASHSIZE 101
 #define BUFF_LEN 128
+#define NUM_OF_BUFFERS 4
 #define NULL 0
 /* The major device number. We can't rely on dynamic
  * registration any more, because ioctls need to know
@@ -23,10 +24,7 @@
 
 
 typedef struct message_info {
-    char channelBuff1[BUFF_LEN];
-    char channelBuff2[BUFF_LEN];
-    char channelBuff3[BUFF_LEN];
-    char channelBuff4[BUFF_LEN];
+    char channelBuffs[NUM_OF_BUFFERS][BUFF_LEN];
     short currentChannelIndex;
 } messageInfo;
 
