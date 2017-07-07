@@ -167,7 +167,9 @@ static int device_release(struct inode *inode, struct file *file)
     /* ready for our next caller */
     spin_lock_irqsave(&device_info.lock, flags);
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
+    printk("Looking for device with unique_id %s\n", uniqueId);
     if (lookup(uniqueId)) {
+        printk("pops out device with unique_id %s\n", uniqueId);
         pop(uniqueId);
     }
     else {
@@ -192,10 +194,12 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
     printk("device_read(%p,%lu)\n", file, length);
 
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
+    printk("Looking for device with unique_id %s\n", uniqueId);
     if ((np = lookup(uniqueId)) == NULL) {
         printk("Couldn't find device(%p), wasn't opened yet\n", file);
         return -1;
     }
+    printk("Reading content device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
     for (i = 0; i < length; i++) {
         if (np->defn->currentChannelIndex == 0)
             put_user(np->defn->channelBuff1[i], buffer + i);
@@ -206,7 +210,7 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
         if (np->defn->currentChannelIndex == 3)
             put_user(np->defn->channelBuff4[i], buffer + i);
     }
-    return SUCCESS; // invalid argument error
+    return i;
 }
 
 /* somebody tries to write into our device file */
@@ -217,12 +221,13 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
 
     printk("device_write(%p,%lu)\n", file, length);
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
+    printk("Looking for device with unique_id %s\n", uniqueId);
     if ((np = lookup(uniqueId)) == NULL) {
         printk("Couldn't find device(%p), wasn't opened yet\n", file);
         return -1;
     }
 
-    printk("Current channel index: %hu\n", np->defn->currentChannelIndex);
+    printk("Writing content device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
     for (i = 0; i < length; i++) {
         if (np->defn->currentChannelIndex == 0)
             get_user(np->defn->channelBuff1[i], buffer + i);
