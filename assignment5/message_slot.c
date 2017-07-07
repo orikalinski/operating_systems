@@ -206,7 +206,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
 
     printk("device_write(%p,%lu)\n", file, length);
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
-    if (!(np = lookup(uniqueId))) {
+    if ((np = lookup(uniqueId)) == NULL) {
         printk("Couldn't find device(%p), wasn't opened yet\n", file);
         return -1;
     }

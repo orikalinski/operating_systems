@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>  /* ioctl */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int main(int argc, const char *argv[]) {
     int file_desc, ret_val;
@@ -30,7 +31,7 @@ int main(int argc, const char *argv[]) {
         exit(-1);
     }
 
-    ret_val = (int) write(file_desc, message, BUFF_LEN);
+    ret_val = (int) write(file_desc, message, strlen(message));
 
     if (ret_val < 0) {
         printf("write failed:%d\n", ret_val);
