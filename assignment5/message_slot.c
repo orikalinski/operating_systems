@@ -225,7 +225,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     for (;i < BUFF_LEN; i++)
         np->defn->channelBuffs[np->defn->currentChannelIndex][i] =  '\0';
     printk("Wrote content:%s for device with unique_id %s, channel_id: %hu\n",
-           np->defn->channelBuffs[np->defn->currentChannelIndex][i], uniqueId, np->defn->currentChannelIndex);
+           np->defn->channelBuffs[np->defn->currentChannelIndex], uniqueId, np->defn->currentChannelIndex);
 
     /* return the number of input characters used */
     return i;
