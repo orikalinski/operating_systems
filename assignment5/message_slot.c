@@ -211,7 +211,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
         return -1;
     }
 
-    printk("Current channel index: %hu", np->defn->currentChannelIndex);
+    printk("Current channel index: %hu\n", np->defn->currentChannelIndex);
     for (i = 0; i < length; i++) {
         if (np->defn->currentChannelIndex == 0)
             get_user(np->defn->channelBuff1[i], buffer + i);
