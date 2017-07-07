@@ -101,26 +101,45 @@ struct nlist *install(char *name, messageInfo *defn)
     return np;
 }
 
+void clearItem(struct nlist *np){
+    unsigned hashval;
+    if (np->previous)
+        np->previous->next = np->next;
+    if (np->next)
+        np->next->previous = np->previous;
+    if (!np->next && !np->previous) {
+        hashval = hash(np->name);
+        hashtab[hashval] = NULL;
+    }
+
+    kfree((void *) np->defn); /*kfree previous defn */
+    kfree((void *) np->name); /*kfree name */
+    kfree((void *) np); /*kfree np */
+}
+
 struct nlist *pop(char *name)
 {
     struct nlist *np;
-    unsigned hashval;
     if ((np = lookup(name)) == NULL) { /* not found */
         return NULL;
     } else {/* already there */
-        if (np->previous)
-            np->previous->next = np->next;
-        if (np->next)
-            np->next->previous = np->previous;
-        if (!np->next && !np->previous) {
-            hashval = hash(name);
-            hashtab[hashval] = NULL;
-        }
-
-        kfree((void *) np->defn); /*kfree previous defn */
-        kfree((void *) np->name); /*kfree name */
-        kfree((void *) np); /*kfree np */
+        clearItem(np);
         return np;
+    }
+}
+
+void hashTableCleanUp(void) {
+    int i = 0;
+    struct nlist *np;
+    struct nlist *tmp;
+
+    for (; i < HASHSIZE; i++){
+        np = hashtab[i];
+        while (np != NULL){
+            tmp = np->next;
+            clearItem(np);
+            np = tmp;
+        }
     }
 }
 
@@ -298,6 +317,7 @@ static void __exit simple_cleanup(void) {
      * Unregister the device
      * should always succeed (didnt used to in older kernel versions)
      */
+    hashTableCleanUp();
     unregister_chrdev(major, DEVICE_RANGE_NAME);
 }
 

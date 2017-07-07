@@ -22,7 +22,6 @@
 #define DEVICE_FILE_NAME "message_slot"
 #define SUCCESS 0
 
-
 typedef struct message_info {
     char channelBuffs[NUM_OF_BUFFERS][BUFF_LEN];
     short currentChannelIndex;
