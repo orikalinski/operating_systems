@@ -107,8 +107,10 @@ struct nlist *pop(char *name)
     if ((np = lookup(name)) == NULL) { /* not found */
         return NULL;
     } else {/* already there */
-        np->previous->next = np->next;
-        np->next->previous = np->previous;
+        if (np->previous)
+            np->previous->next = np->next;
+        if (np->next)
+            np->next->previous = np->previous;
         kfree((void *) np->defn); /*kfree previous defn */
         kfree((void *) np->name); /*kfree name */
         kfree((void *) np); /*kfree np */
