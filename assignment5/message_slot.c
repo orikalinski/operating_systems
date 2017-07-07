@@ -91,7 +91,8 @@ struct nlist *install(char *name, messageInfo *defn)
             return NULL;
         hashval = hash(name);
         np->next = hashtab[hashval];
-        hashtab[hashval]->previous = np;
+        if (hashtab[hashval])
+            hashtab[hashval]->previous = np;
         hashtab[hashval] = np;
     } else /* already there */
         kfree((void *) np->defn); /*kfree previous defn */
