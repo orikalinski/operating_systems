@@ -30,7 +30,7 @@ int main(int argc, const char *argv[]) {
         exit(-1);
     }
 
-    ret_val = write(file_desc, message, BUFF_LEN) < 0;
+    ret_val = (int) write(file_desc, message, BUFF_LEN);
 
     if (ret_val < 0) {
         printf("write failed:%d\n", ret_val);
