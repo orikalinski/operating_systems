@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 int main(int argc, const char *argv[]) {
     int file_desc, ret_val;
@@ -34,7 +35,7 @@ int main(int argc, const char *argv[]) {
     ret_val = (int) write(file_desc, message, strlen(message));
 
     if (ret_val < 0) {
-        printf("write failed:%d\n", ret_val);
+        printf("write failed:%s\n", strerror(errno));
         exit(-1);
     }
 

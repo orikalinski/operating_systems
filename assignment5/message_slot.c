@@ -243,6 +243,8 @@ static long device_ioctl(//struct inode*  inode,
     struct nlist *np;
     char uniqueId[ID_LEN];
 
+    printk("device_ioctl(%p)\n", file);
+
     if (ioctl_param < 0 || ioctl_param > 3) return -1;
 
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
