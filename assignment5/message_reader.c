@@ -32,7 +32,7 @@ int main(int argc, const char *argv[]) {
 
     if (read(file_desc, message, BUFF_LEN) < 0) return 1;
 
-    printf("The message is: %s", message);
+    printf("The message is: %s\n", message);
 
     close(file_desc);
     return 0;
