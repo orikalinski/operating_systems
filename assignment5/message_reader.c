@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 int main(int argc, const char *argv[]) {
     int file_desc, ret_val;
@@ -30,7 +31,12 @@ int main(int argc, const char *argv[]) {
         exit(-1);
     }
 
-    if (read(file_desc, message, BUFF_LEN) < 0) return 1;
+    ret_val = read(file_desc, message, BUFF_LEN);
+
+    if (ret_val < 0) {
+        printf("read failed:%s\n", strerror(errno));
+        exit(-1);
+    }
 
     printf("The message is: %s\n", message);
 
