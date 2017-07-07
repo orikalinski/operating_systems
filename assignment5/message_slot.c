@@ -104,6 +104,7 @@ struct nlist *install(char *name, messageInfo *defn)
 struct nlist *pop(char *name)
 {
     struct nlist *np;
+    unsigned hashval;
     if ((np = lookup(name)) == NULL) { /* not found */
         return NULL;
     } else {/* already there */
@@ -111,6 +112,11 @@ struct nlist *pop(char *name)
             np->previous->next = np->next;
         if (np->next)
             np->next->previous = np->previous;
+        if (!np->next && !np->previous) {
+            hashval = hash(name);
+            hashtab[hashval] = NULL;
+        }
+
         kfree((void *) np->defn); /*kfree previous defn */
         kfree((void *) np->name); /*kfree name */
         kfree((void *) np); /*kfree np */
