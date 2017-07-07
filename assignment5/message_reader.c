@@ -18,15 +18,14 @@ int main(int argc, const char *argv[]) {
 
     file_desc = open("/dev/"DEVICE_FILE_NAME, O_RDONLY);
     if (file_desc < 0) {
-        printf("Can't open device file: %s\n",
-               DEVICE_FILE_NAME);
+        printf("open failed:%s\n", strerror(errno));
         exit(-1);
     }
 
-    ret_val = ioctl(file_desc, 0, channelIndex);
-    
+    ret_val = ioctl(file_desc, IOCTL_SET_CHA, channelIndex);
+
     if (ret_val < 0) {
-        printf("ioctl_set_msg failed:%d\n", ret_val);
+        printf("ioctl failed:%s\n", strerror(errno));
         exit(-1);
     }
 
