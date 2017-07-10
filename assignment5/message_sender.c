@@ -47,7 +47,7 @@ int main(int argc, const char *argv[]) {
         exit(-1);
     }
 
-    printf("The message: %s was successfully written", message);
+    printf("The message: %s was successfully written\n", message);
 
     CLOSE(file_desc)
     return 0;
