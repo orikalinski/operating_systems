@@ -32,8 +32,6 @@ struct chardev_info{
 
 static struct chardev_info device_info;
 
-static int major; /* device major number */
-
 //https://stackoverflow.com/questions/4384359/quick-way-to-implement-dictionary-in-c
 static struct nlist *hashtab[HASHSIZE];
 
@@ -261,14 +259,16 @@ static long device_ioctl(//struct inode*  inode,
 
     printk("device_ioctl(%p)\n", file);
 
-    if (ioctl_param < 0 || ioctl_param > 3) return -1;
+    if (IOCTL_SET_CHA == ioctl_num) {
+        if (ioctl_param < 0 || ioctl_param > 3) return -1;
 
-    sprintf(uniqueId, "%lu", file->f_inode->i_ino);
-    if (!(np = lookup(uniqueId))) {
-        printk("Couldn't find device (%p), wasn't opened yet\n", file);
-        return -1;
+        sprintf(uniqueId, "%lu", file->f_inode->i_ino);
+        if (!(np = lookup(uniqueId))) {
+            printk("Couldn't find device (%p), wasn't opened yet\n", file);
+            return -1;
+        }
+        np->defn->currentChannelIndex = ioctl_param;
     }
-    np->defn->currentChannelIndex = ioctl_param;
     return SUCCESS;
 }
 
