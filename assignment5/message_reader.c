@@ -23,7 +23,7 @@
 int main(int argc, const char *argv[]) {
 
     if (argc != 2) {
-        printf("Please enter the following format: ./sender <channelIndex>\n");
+        printf("Please enter the following format: ./reader <channelIndex>\n");
         exit(-1);
     }
     int file_desc, ret_val;
