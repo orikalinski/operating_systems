@@ -1,3 +1,5 @@
+#!/bin/bash
+
 sudo rm /dev/message_slot
 sudo rmmod message_slot.ko
 make
