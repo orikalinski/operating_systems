@@ -322,7 +322,8 @@ static void __exit simple_cleanup(void) {
      * should always succeed (didnt used to in older kernel versions)
      */
     hashTableCleanUp();
-    unregister_chrdev(major, DEVICE_RANGE_NAME);
+    unregister_chrdev(MAJOR_NUM, DEVICE_RANGE_NAME);
+    printk("Unregisteration is a success. The major device number is %d.\n", MAJOR_NUM);
 }
 
 module_init(simple_init);
