@@ -12,6 +12,13 @@
 #include <string.h>
 #include <errno.h>
 
+#define CLOSE(file_desc) \
+    ret_val = close(file_desc); \
+    if (ret_val < 0) { \
+        printf("close failed:%s\n", strerror(errno)); \
+        exit(-1); \
+    }
+
 int main(int argc, const char *argv[]) {
     int file_desc, ret_val;
     int channelIndex = atoi(argv[1]);
@@ -28,6 +35,7 @@ int main(int argc, const char *argv[]) {
 
     if (ret_val < 0) {
         printf("ioctl failed:%s\n", strerror(errno));
+        CLOSE(file_desc)
         exit(-1);
     }
 
@@ -35,9 +43,12 @@ int main(int argc, const char *argv[]) {
 
     if (ret_val < 0) {
         printf("write failed:%s\n", strerror(errno));
+        CLOSE(file_desc)
         exit(-1);
     }
 
-    close(file_desc);
+    printf("The message: %s was successfully written", message);
+
+    CLOSE(file_desc)
     return 0;
 }
