@@ -227,6 +227,7 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
 /* somebody tries to write into our device file */
 static ssize_t device_write(struct file *file, const char __user *buffer, size_t length, loff_t * offset) {
     int i;
+    int returnValue;
     struct nlist *np;
     char uniqueId[ID_LEN];
 
@@ -241,13 +242,14 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     printk("Writing content for device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
     for (i = 0; i < length; i++)
         get_user(np->defn->channelBuffs[np->defn->currentChannelIndex][i], buffer + i);
+    returnValue = i;
     for (;i < BUFF_LEN; i++)
         np->defn->channelBuffs[np->defn->currentChannelIndex][i] = '\0';
     printk("Wrote content:%s for device with unique_id %s, channel_id: %hu\n",
            np->defn->channelBuffs[np->defn->currentChannelIndex], uniqueId, np->defn->currentChannelIndex);
 
     /* return the number of input characters used */
-    return i;
+    return returnValue;
 }
 
 static long device_ioctl(//struct inode*  inode,
@@ -284,27 +286,29 @@ struct file_operations Fops = {
 
 /* Called when module is loaded.
  * Initialize the module - Register the character device */
-static int __init simple_init(void) {
+static int __init simple_init(void)
+{
+    unsigned int rc = 0;
     /* init dev struct*/
     memset(&device_info, 0, sizeof(struct chardev_info));
     spin_lock_init(&device_info.lock);
 
     /* Register a character device. Get newly assigned major num */
-    major = register_chrdev(0, DEVICE_RANGE_NAME, &Fops /* our own file operations struct */);
+    rc = register_chrdev(MAJOR_NUM, DEVICE_RANGE_NAME, &Fops /* our own file operations struct */);
 
     /*
      * Negative values signify an error
      */
-    if (major < 0) {
+    if (rc < 0) {
         printk(KERN_ALERT "%s failed with %d\n",
-                "Sorry, registering the character device ", major);
-        return major;
+                "Sorry, registering the character device ", MAJOR_NUM);
+        return -1;
     }
 
-    printk("Registeration is a success. The major device number is %d.\n", major);
+    printk("Registeration is a success. The major device number is %d.\n", MAJOR_NUM);
     printk("If you want to talk to the device driver,\n");
     printk("you have to create a device file:\n");
-    printk("mknod /dev/%s c %d 0\n", DEVICE_FILE_NAME, major);
+    printk("mknod /dev/%s c %d 0\n", DEVICE_FILE_NAME, MAJOR_NUM);
     printk("You can echo/cat to/from the device file.\n");
     printk("Dont forget to rm the device file and rmmod when you're done\n");
 
