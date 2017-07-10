@@ -22,6 +22,7 @@
 int main(int argc, const char *argv[]) {
     if (argc != 3) {
         printf("Please enter the following format: ./sender <channelIndex> <message>\n");
+        exit(-1);
     }
     int file_desc, ret_val;
     int channelIndex = atoi(argv[1]);
