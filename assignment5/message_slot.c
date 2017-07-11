@@ -164,7 +164,6 @@ static int device_open(struct inode *inode, struct file *file)
     }
     printk("Creating new struct for device with unique_id %s\n", uniqueId);
     messageInfo2 = (messageInfo *) kmalloc(sizeof(messageInfo), GFP_KERNEL);
-    memset(messageInfo2->channelBuffs, '\0', 1 * NUM_OF_BUFFERS * BUFF_LEN);
     printk("malloced messageInfo device with unique_id %s\n", uniqueId);
     install(uniqueId, messageInfo2);
     printk("installed struct for device with unique_id %s\n", uniqueId);
@@ -198,7 +197,7 @@ static ssize_t device_read(struct file *file, /* see include/linux/fs.h   */
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     printk("Looking for device with unique_id %s\n", uniqueId);
     if ((np = lookup(uniqueId)) == NULL) {
-        printk("Couldn't find device(%p), wasn't opened yet\n", file);
+        printk("Couldn't find device(%p), struct not associated to the device\n", file);
         return -1;
     }
     printk("Reading content device with unique_id %s, channel_id: %hu\n", uniqueId, np->defn->currentChannelIndex);
@@ -218,7 +217,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     sprintf(uniqueId, "%lu", file->f_inode->i_ino);
     printk("Looking for device with unique_id %s\n", uniqueId);
     if ((np = lookup(uniqueId)) == NULL) {
-        printk("Couldn't find device(%p), wasn't opened yet\n", file);
+        printk("Couldn't find device(%p), struct not associated to the device\n", file);
         return -1;
     }
 
@@ -249,7 +248,7 @@ static long device_ioctl(//struct inode*  inode,
 
         sprintf(uniqueId, "%lu", file->f_inode->i_ino);
         if (!(np = lookup(uniqueId))) {
-            printk("Couldn't find device (%p), wasn't opened yet\n", file);
+            printk("Couldn't find device (%p), struct not associated to the device\n", file);
             return -1;
         }
         np->defn->currentChannelIndex = ioctl_param;
